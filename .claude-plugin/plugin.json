@@ -1,0 +1,10 @@
+{
+  "name": "deck2pptx",
+  "version": "0.1.0",
+  "description": "Convert HTML slide decks into editable PowerPoint files that keep the same design: real text, shapes, tables and embedded fonts.",
+  "author": { "name": "moumee", "url": "https://github.com/moumee" },
+  "homepage": "https://github.com/moumee/deck2pptx",
+  "repository": "https://github.com/moumee/deck2pptx",
+  "license": "MIT",
+  "keywords": ["powerpoint", "pptx", "slides", "presentations", "html", "frontend-slides"]
+}

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deck2pptx"
+version = "0.1.0"
+description = "Convert fixed-stage HTML slide decks into editable PowerPoint files that keep the same design."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "moumee" }]
+dependencies = [
+    "playwright>=1.48",
+    "python-pptx>=1.0",
+    "lxml>=5.0",
+    "fonttools>=4.50",
+    "brotli>=1.1",
+    "uharfbuzz>=0.40",
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "pypdfium2>=4.30",
+    "pywin32>=306; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+deck2pptx = "deck2pptx.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/moumee/deck2pptx"
+Issues = "https://github.com/moumee/deck2pptx/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+deck2pptx = ["extract.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

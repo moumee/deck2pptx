@@ -1,0 +1,10 @@
+playwright>=1.48
+python-pptx>=1.0
+lxml>=5.0
+fonttools>=4.50
+brotli>=1.1
+uharfbuzz>=0.40
+pillow>=10.0
+numpy>=1.26
+pypdfium2>=4.30
+pywin32>=306; sys_platform == "win32"

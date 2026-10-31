@@ -1,0 +1,3426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Inference at Scale</title>
+
+    <!-- Fonts: Sora + Manrope, JetBrains Mono for code (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Neon Cyber: deep navy, cyan, magenta.
+           Change these to change the whole look
+           =========================================== */
+        :root {
+            /* Colors */
+            --bg-primary: #0a0f1c;
+            --bg-secondary: #0f1629;
+            --bg-card: rgba(16, 26, 50, 0.78);
+            --text-primary: #f2f6ff;
+            --text-secondary: #9fb0cc;
+            --text-muted: #6b7c99;
+            --accent: #00ffcc;
+            --accent-glow: rgba(0, 255, 204, 0.3);
+            --accent-2: #ff00aa;
+            --accent-2-glow: rgba(255, 0, 170, 0.3);
+            --accent-3: #4da3ff;
+            --warn: #ffd166;
+            --line: rgba(0, 255, 204, 0.22);
+            --line-soft: rgba(159, 176, 204, 0.16);
+
+            /* Stage colors (used by viewport-base.css) */
+            --stage-bg: #05070f;
+            --slide-bg: #0a0f1c;
+
+            /* Typography — authored at 1920×1080 stage size */
+            --font-display: 'Sora', sans-serif;
+            --font-body: 'Manrope', sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+            --title-size: 140px;
+            --h2-size: 60px;
+            --subtitle-size: 34px;
+            --body-size: 26px;
+            --small-size: 22px;
+
+            /* Spacing — authored at 1920×1080 stage size */
+            --slide-padding: 72px;
+            --content-gap: 28px;
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===========================================
+           VIEWPORT BASE (viewport-base.css, full contents)
+           Fixed 16:9 stage: slides are authored at 1920×1080
+           =========================================== */
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           Include this ENTIRE file in every presentation.
+           Slides are authored at 1920×1080 and scaled as a whole.
+           =========================================== */
+
+        /* 1. Lock the browser viewport */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 2. Full-window deck viewport */
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 3. Fixed 16:9 design canvas.
+           JavaScript sets transform: translate(...) scale(...). */
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+
+        /* 4. Slides stack inside the fixed stage.
+           Content must be laid out at 1920×1080, not reflowed per device. */
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+        }
+
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        /* 5. Keep media inside authored slide bounds */
+        img,
+        video,
+        canvas,
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* 6. Presentation chrome stays outside the slide design system */
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        /* 7. Print one fixed-size slide per page */
+        @media print {
+            html,
+            body {
+                width: 1920px;
+                height: auto;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-viewport {
+                position: static;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-stage {
+                position: static;
+                width: auto;
+                height: auto;
+                transform: none !important;
+                background: none;
+            }
+
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+
+            .slide:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .deck-controls {
+                display: none !important;
+            }
+        }
+
+        /* 8. Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           Trigger via .visible class on the active slide.
+           Stagger comes from :nth-child delays on siblings.
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Scale In */
+        .reveal-scale {
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity 0.7s var(--ease-out-expo),
+                        transform 0.7s var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal-scale {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Slide from Left */
+        .reveal-left {
+            opacity: 0;
+            transform: translateX(-50px);
+            transition: opacity 0.6s var(--ease-out-expo),
+                        transform 0.6s var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal-left {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Blur In */
+        .reveal-blur {
+            opacity: 0;
+            filter: blur(10px);
+            transition: opacity 0.9s var(--ease-out-expo),
+                        filter 0.9s var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal-blur {
+            opacity: 1;
+            filter: blur(0);
+        }
+
+        /* Stagger children for sequential reveal */
+        .reveal:nth-child(1), .reveal-scale:nth-child(1), .reveal-left:nth-child(1), .reveal-blur:nth-child(1) { transition-delay: 0.10s; }
+        .reveal:nth-child(2), .reveal-scale:nth-child(2), .reveal-left:nth-child(2), .reveal-blur:nth-child(2) { transition-delay: 0.18s; }
+        .reveal:nth-child(3), .reveal-scale:nth-child(3), .reveal-left:nth-child(3), .reveal-blur:nth-child(3) { transition-delay: 0.26s; }
+        .reveal:nth-child(4), .reveal-scale:nth-child(4), .reveal-left:nth-child(4), .reveal-blur:nth-child(4) { transition-delay: 0.34s; }
+        .reveal:nth-child(5), .reveal-scale:nth-child(5), .reveal-left:nth-child(5), .reveal-blur:nth-child(5) { transition-delay: 0.42s; }
+        .reveal:nth-child(6), .reveal-scale:nth-child(6), .reveal-left:nth-child(6), .reveal-blur:nth-child(6) { transition-delay: 0.50s; }
+        .reveal:nth-child(7), .reveal-scale:nth-child(7), .reveal-left:nth-child(7), .reveal-blur:nth-child(7) { transition-delay: 0.58s; }
+        .reveal:nth-child(8), .reveal-scale:nth-child(8), .reveal-left:nth-child(8), .reveal-blur:nth-child(8) { transition-delay: 0.66s; }
+        .reveal:nth-child(9), .reveal-scale:nth-child(9), .reveal-left:nth-child(9), .reveal-blur:nth-child(9) { transition-delay: 0.74s; }
+
+        /* Neon pulse used by glowing dots and the orbit core */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.12); opacity: 1; }
+        }
+
+        /* ===========================================
+           SLIDE BACKGROUND
+           Layered radial gradient mesh + CSS grid-line pattern
+           =========================================== */
+        .slide {
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            background:
+                radial-gradient(ellipse 55% 60% at 8% 100%, rgba(255, 0, 170, 0.20) 0%, transparent 62%),
+                radial-gradient(ellipse 50% 55% at 96% 0%, rgba(0, 255, 204, 0.16) 0%, transparent 60%),
+                radial-gradient(ellipse 36% 40% at 62% 58%, rgba(77, 163, 255, 0.09) 0%, transparent 70%),
+                var(--bg-primary);
+        }
+
+        /* Grid-line pattern, faded toward the edges with a radial mask */
+        .slide::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0, 255, 204, 0.055) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.055) 1px, transparent 1px);
+            background-size: 60px 60px;
+            -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, #000 20%, transparent 85%);
+            mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, #000 20%, transparent 85%);
+        }
+
+        /* Neon rule along the top edge of every slide */
+        .slide::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            height: 3px;
+            z-index: 3;
+            pointer-events: none;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2) 60%, transparent);
+            box-shadow: 0 0 18px var(--accent-glow);
+            opacity: 0.85;
+        }
+
+        /* ===========================================
+           SLIDE LAYOUT SCAFFOLD
+           header (eyebrow + title + lede) / body / footer
+           =========================================== */
+        .slide-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            padding: 56px var(--slide-padding) 84px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide-head {
+            flex: 0 0 auto;
+            margin-bottom: var(--content-gap);
+        }
+
+        .slide-body {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .slide-foot {
+            position: absolute;
+            left: var(--slide-padding);
+            right: var(--slide-padding);
+            bottom: 30px;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .slide-foot .pg { color: var(--accent); }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        .eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .eyebrow::before {
+            content: '';
+            width: 44px;
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .slide h2 {
+            margin-top: 14px;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: var(--h2-size);
+            line-height: 1.08;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .slide h2 .hl {
+            color: var(--accent);
+            text-shadow: 0 0 22px var(--accent-glow);
+        }
+
+        .lede {
+            margin-top: 12px;
+            max-width: 1500px;
+            font-size: 26px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .slide h3 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 30px;
+            line-height: 1.15;
+            color: var(--text-primary);
+        }
+
+        .mono { font-family: var(--font-mono); }
+
+        .label {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SHARED COMPONENTS: cards, chips, neon glow
+           =========================================== */
+        .card {
+            position: relative;
+            padding: 28px 32px;
+            border-radius: 18px;
+            border: 1px solid rgba(0, 255, 204, 0.28);
+            background: linear-gradient(160deg, rgba(20, 34, 64, 0.82), rgba(10, 16, 32, 0.84));
+            box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.04),
+                        0 0 28px rgba(0, 255, 204, 0.10),
+                        inset 0 0 36px rgba(0, 255, 204, 0.04);
+        }
+
+        .card.magenta {
+            border-color: rgba(255, 0, 170, 0.40);
+            box-shadow: 0 0 0 1px rgba(255, 0, 170, 0.05),
+                        0 0 30px rgba(255, 0, 170, 0.16),
+                        inset 0 0 36px rgba(255, 0, 170, 0.05);
+        }
+
+        .card-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid currentColor;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .chip.up { color: var(--accent); background: rgba(0, 255, 204, 0.08); }
+        .chip.hot { color: var(--accent-2); background: rgba(255, 0, 170, 0.08); }
+        .chip.cool { color: var(--accent-3); background: rgba(77, 163, 255, 0.08); }
+        .chip.warn { color: var(--warn); background: rgba(255, 209, 102, 0.08); }
+
+        .glow-text {
+            color: var(--accent);
+            text-shadow: 0 0 18px rgba(0, 255, 204, 0.55), 0 0 44px rgba(0, 255, 204, 0.25);
+        }
+
+        .glow-text.magenta {
+            color: var(--accent-2);
+            text-shadow: 0 0 18px rgba(255, 0, 170, 0.55), 0 0 44px rgba(255, 0, 170, 0.25);
+        }
+
+        /* Bulleted lists (real <ul><li>) with a neon diamond marker */
+        .bullets {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bullets li {
+            position: relative;
+            padding-left: 44px;
+            font-size: 26px;
+            line-height: 1.38;
+            color: var(--text-secondary);
+        }
+
+        .bullets li::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 13px;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            transform: rotate(45deg);
+            box-shadow: 0 0 12px var(--accent), 0 0 24px var(--accent-glow);
+        }
+
+        .bullets li:nth-child(even)::before {
+            background: var(--accent-2);
+            box-shadow: 0 0 12px var(--accent-2), 0 0 24px var(--accent-2-glow);
+        }
+
+        .bullets li strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        /* Monogram avatar used for speaker and quote attribution */
+        .monogram {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 28px;
+            color: var(--accent);
+            background: rgba(0, 255, 204, 0.08);
+            box-shadow: 0 0 22px var(--accent-glow), inset 0 0 18px rgba(0, 255, 204, 0.12);
+        }
+
+        /* ===========================================
+           SLIDE 1: TITLE
+           Particle canvas, orbit graphic, neon title glow
+           =========================================== */
+        .particles {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .title-top {
+            position: absolute;
+            left: 96px;
+            right: 96px;
+            top: 56px;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 20px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .title-top .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--text-primary);
+        }
+
+        .brand-mark {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--accent);
+            transform: rotate(45deg);
+            box-shadow: 0 0 14px var(--accent-glow), inset 0 0 8px var(--accent-glow);
+        }
+
+        .title-main {
+            position: absolute;
+            left: 96px;
+            top: 218px;
+            width: 1180px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .title-slide h1 {
+            margin-top: 30px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: var(--title-size);
+            line-height: 0.98;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+        }
+
+        .title-slide h1 .line-1 {
+            display: block;
+            color: #ffffff;
+            text-shadow: 0 0 28px rgba(0, 255, 204, 0.45), 0 0 80px rgba(0, 255, 204, 0.20);
+        }
+
+        .title-slide h1 .line-2 {
+            display: block;
+            color: var(--accent);
+            background: linear-gradient(90deg, var(--accent) 0%, #5ad8ff 45%, var(--accent-2) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 22px rgba(0, 255, 204, 0.40));
+        }
+
+        .title-sub {
+            margin-top: 32px;
+            max-width: 1060px;
+            font-size: var(--subtitle-size);
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .title-sub strong { color: var(--text-primary); font-weight: 700; }
+
+        .title-speaker {
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 22px;
+        }
+
+        .speaker-name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 30px;
+            line-height: 1.1;
+        }
+
+        .speaker-role {
+            margin-top: 6px;
+            font-size: 22px;
+            color: var(--text-secondary);
+        }
+
+        .title-metrics {
+            position: absolute;
+            left: 96px;
+            right: 96px;
+            bottom: 64px;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 28px;
+        }
+
+        .title-metrics .metric {
+            position: relative;
+            padding-top: 18px;
+            border-top: 2px solid var(--line);
+        }
+
+        .title-metrics .metric::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            width: 64px;
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .metric-num {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 52px;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .metric-num small {
+            margin-left: 8px;
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .metric-label {
+            margin-top: 10px;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* Orbit: concentric neon rings with glowing nodes (abstract shapes only) */
+        .orbit {
+            position: absolute;
+            right: 120px;
+            top: 190px;
+            width: 600px;
+            height: 600px;
+            z-index: 2;
+        }
+
+        .orbit .ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 204, 0.40);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.15), inset 0 0 30px rgba(0, 255, 204, 0.08);
+        }
+
+        .orbit .r1 { inset: 0; }
+        .orbit .r2 { inset: 90px; border-style: dashed; border-color: rgba(255, 0, 170, 0.50); box-shadow: 0 0 30px rgba(255, 0, 170, 0.15); }
+        .orbit .r3 { inset: 180px; }
+
+        .orbit .core {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 120px;
+            height: 120px;
+            margin: -60px 0 0 -60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 204, 0.95) 0%, rgba(0, 255, 204, 0.18) 55%, transparent 72%);
+            box-shadow: 0 0 60px rgba(0, 255, 204, 0.60);
+            animation: pulse 3.2s ease-in-out infinite;
+        }
+
+        .orbit .node {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 16px 4px var(--accent-glow);
+        }
+
+        .orbit .node.m {
+            background: var(--accent-2);
+            box-shadow: 0 0 16px 4px var(--accent-2-glow);
+        }
+
+        .orbit .n1 { left: 442px; top: 32px; }
+        .orbit .n2 { left: 582px; top: 370px; }
+        .orbit .n3 { left: 189px; top: 574px; }
+        .orbit .n4 { left: 95px; top: 220px; }
+        .orbit .n5 { left: 397px; top: 110px; }
+        .orbit .n6 { left: 384px; top: 369px; }
+
+        /* ===========================================
+           SLIDE 2: AGENDA
+           =========================================== */
+        .agenda-layout {
+            display: grid;
+            grid-template-columns: 1120px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .agenda-list { display: flex; flex-direction: column; }
+
+        .agenda-head,
+        .agenda-row {
+            display: grid;
+            grid-template-columns: 96px 1fr 130px;
+            align-items: center;
+        }
+
+        .agenda-head {
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .agenda-row {
+            padding: 15px 0;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .agenda-num {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 48px;
+            line-height: 1;
+            color: var(--accent);
+            text-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        .agenda-topic h3 { font-size: 32px; }
+
+        .agenda-topic p {
+            margin-top: 6px;
+            font-size: 23px;
+            line-height: 1.3;
+            color: var(--text-secondary);
+        }
+
+        .agenda-time { justify-self: end; }
+
+        .side-stack { display: flex; flex-direction: column; gap: 24px; }
+
+        .side-stack .card p {
+            font-size: 22px;
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        .side-stack .card p strong { color: var(--text-primary); }
+
+        .bullets.compact { gap: 14px; }
+
+        .bullets.compact li {
+            padding-left: 36px;
+            font-size: 23px;
+            line-height: 1.35;
+        }
+
+        .bullets.compact li::before { top: 11px; }
+
+        /* ===========================================
+           SLIDE 3: THE PROBLEM (bullets + latency budget)
+           =========================================== */
+        .problem-layout {
+            display: grid;
+            grid-template-columns: 1040px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .problem-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .goal {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            padding: 22px 30px;
+        }
+
+        .goal p {
+            font-size: 25px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .goal p strong { color: var(--text-primary); }
+
+        .budget-row { margin-top: 18px; }
+
+        .budget-row .row-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+
+        .row-name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 26px;
+        }
+
+        .row-total {
+            font-family: var(--font-mono);
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .row-total.hot { color: var(--accent-2); }
+
+        .stack {
+            display: flex;
+            height: 46px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 22px rgba(0, 255, 204, 0.12);
+        }
+
+        .stack.central { width: 100%; }
+        .stack.edge { width: 30.7%; }
+        .stack .seg { flex: var(--ms) 1 0px; min-width: 0; }
+
+        .seg.rtt { background: var(--accent-2); }
+        .seg.tls { background: var(--warn); }
+        .seg.queue { background: var(--accent-3); }
+        .seg.prefill { background: var(--accent); }
+        .seg.decode { background: #e6f0ff; }
+
+        .budget-legend {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 22px 1fr 96px 96px;
+            gap: 8px 14px;
+            align-items: center;
+            font-size: 22px;
+            color: var(--text-secondary);
+        }
+
+        .budget-legend .sw { width: 16px; height: 16px; border-radius: 4px; }
+        .budget-legend .num { text-align: right; font-family: var(--font-mono); font-size: 21px; }
+        .budget-legend .head { font-family: var(--font-mono); font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+        .budget-legend .total { padding-top: 10px; border-top: 1px solid var(--line); font-weight: 700; color: var(--text-primary); }
+
+        /* ===========================================
+           SLIDE 4: FLEET AT A GLANCE (stat cards)
+           =========================================== */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            gap: 28px;
+        }
+
+        .stat-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 26px 32px 28px;
+        }
+
+        .stat-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .spark { width: 132px; height: 44px; overflow: visible; }
+
+        .spark polyline {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px rgba(0, 255, 204, 0.6));
+        }
+
+        .spark circle { fill: var(--accent); }
+
+        .spark.hot polyline { stroke: var(--accent-2); filter: drop-shadow(0 0 4px rgba(255, 0, 170, 0.6)); }
+        .spark.hot circle { fill: var(--accent-2); }
+
+        .stat-num {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 104px;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            text-shadow: 0 0 24px rgba(0, 255, 204, 0.35);
+        }
+
+        .stat-num .unit {
+            margin-left: 8px;
+            font-size: 38px;
+            letter-spacing: 0;
+            color: var(--text-secondary);
+            text-shadow: none;
+        }
+
+        .stat-card.magenta .stat-num { text-shadow: 0 0 24px rgba(255, 0, 170, 0.45); }
+
+        .stat-card .chip { align-self: flex-start; }
+
+        .stat-desc {
+            font-size: 25px;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+
+        .stat-desc strong { color: var(--text-primary); font-weight: 700; }
+
+        /* ===========================================
+           SLIDE 5: ARCHITECTURE (two-column layout)
+           numbered steps + CSS diagram
+           =========================================== */
+        .arch-layout {
+            display: grid;
+            grid-template-columns: 700px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .steps li {
+            counter-increment: step;
+            position: relative;
+            padding-left: 76px;
+            min-height: 100px;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 2px;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            border: 1px solid var(--accent);
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 26px;
+            color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow), inset 0 0 12px rgba(0, 255, 204, 0.10);
+        }
+
+        .steps li h3 { font-size: 28px; }
+
+        .steps li p {
+            margin-top: 5px;
+            font-size: 22px;
+            line-height: 1.38;
+            color: var(--text-secondary);
+        }
+
+        .steps li p b { color: var(--accent); font-weight: 700; }
+
+        .diagram-card {
+            display: flex;
+            flex-direction: column;
+            padding: 26px 28px 28px;
+        }
+
+        .diagram {
+            display: grid;
+            grid-template-columns: 1fr 52px 1fr 52px 1fr 52px 1fr;
+            grid-template-rows: 190px 72px 170px 40px 150px;
+        }
+
+        .dg-node {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            padding: 16px 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(0, 255, 204, 0.45);
+            background: rgba(0, 255, 204, 0.06);
+            box-shadow: 0 0 22px rgba(0, 255, 204, 0.12), inset 0 0 20px rgba(0, 255, 204, 0.05);
+        }
+
+        .dg-node .tag {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .dg-node .name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 25px;
+            line-height: 1.1;
+        }
+
+        .dg-node .meta {
+            font-size: 20px;
+            line-height: 1.3;
+            color: var(--text-secondary);
+        }
+
+        .dg-node.client {
+            border-style: dashed;
+            border-color: rgba(159, 176, 204, 0.5);
+            background: rgba(159, 176, 204, 0.05);
+            box-shadow: none;
+        }
+
+        .dg-node.client .tag { color: var(--text-secondary); }
+
+        .dg-node.hot {
+            border-color: var(--accent);
+            background: rgba(0, 255, 204, 0.12);
+            box-shadow: 0 0 34px rgba(0, 255, 204, 0.28), inset 0 0 24px rgba(0, 255, 204, 0.10);
+        }
+
+        .dg-node.spill {
+            border-color: rgba(255, 0, 170, 0.55);
+            background: rgba(255, 0, 170, 0.07);
+            box-shadow: 0 0 22px rgba(255, 0, 170, 0.16);
+        }
+
+        .dg-node.spill .tag { color: var(--accent-2); }
+
+        .dg-arrow {
+            position: relative;
+            align-self: center;
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .dg-arrow::after {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: -6px;
+            border-left: 10px solid var(--accent);
+            border-top: 7px solid transparent;
+            border-bottom: 7px solid transparent;
+        }
+
+        .dg-varrow {
+            position: relative;
+            justify-self: center;
+            width: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .dg-varrow::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            bottom: -1px;
+            border-top: 10px solid var(--accent);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+        }
+
+        .dg-varrow.m { background: var(--accent-2); box-shadow: 0 0 10px var(--accent-2-glow); }
+        .dg-varrow.m::after { border-top-color: var(--accent-2); }
+
+        .dg-legend {
+            grid-column: 1 / 4;
+            grid-row: 3;
+            align-self: end;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .dg-legend span::before {
+            content: '';
+            display: inline-block;
+            width: 28px;
+            height: 3px;
+            margin-right: 12px;
+            vertical-align: middle;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .dg-legend span.m::before { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2-glow); }
+
+        .dg-band {
+            grid-column: 1 / -1;
+            grid-row: 5;
+            display: grid;
+            grid-template-columns: 170px repeat(3, 1fr);
+            gap: 16px;
+            align-items: center;
+            padding: 16px 20px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255, 0, 170, 0.55);
+            background: rgba(255, 0, 170, 0.04);
+        }
+
+        .dg-band .band-label {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent-2);
+        }
+
+        .dg-chip {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--line-soft);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 20px;
+            line-height: 1.25;
+            color: var(--text-secondary);
+        }
+
+        .dg-chip b {
+            display: block;
+            margin-bottom: 2px;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 22px;
+            color: var(--text-primary);
+        }
+
+        /* ===========================================
+           SLIDE 6: EFFICIENCY (CSS-only bar chart built from divs)
+           =========================================== */
+        .bars-layout {
+            display: grid;
+            grid-template-columns: 1130px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .chart-card {
+            display: flex;
+            flex-direction: column;
+            padding: 26px 28px;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 24px;
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .chart-legend i {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            border-radius: 4px;
+            vertical-align: -1px;
+        }
+
+        .bar-chart {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 64px 1fr;
+            grid-template-rows: 480px auto;
+        }
+
+        .bar-yaxis { position: relative; }
+
+        .bar-yaxis .yl {
+            position: absolute;
+            right: 14px;
+            bottom: var(--y);
+            transform: translateY(50%);
+            font-family: var(--font-mono);
+            font-size: 18px;
+            color: var(--text-muted);
+        }
+
+        .bar-plot {
+            position: relative;
+            border-left: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .bar-plot .gl {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: var(--y);
+            border-top: 1px dashed rgba(159, 176, 204, 0.18);
+        }
+
+        .bar-cols {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+        }
+
+        .bar-col {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .bar-val {
+            margin-bottom: 10px;
+            font-family: var(--font-mono);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .bar-fill {
+            width: 96px;
+            height: 0;
+            border-radius: 10px 10px 0 0;
+            background: linear-gradient(180deg, var(--accent), rgba(0, 255, 204, 0.35));
+            box-shadow: 0 0 26px rgba(0, 255, 204, 0.40);
+            transition: height 1.1s var(--ease-out-expo) 0.35s;
+        }
+
+        .bar-fill.dc {
+            background: linear-gradient(180deg, var(--accent-2), rgba(255, 0, 170, 0.35));
+            box-shadow: 0 0 26px rgba(255, 0, 170, 0.40);
+        }
+
+        .bar-fill.mob {
+            background: linear-gradient(180deg, var(--accent-3), rgba(77, 163, 255, 0.35));
+            box-shadow: 0 0 26px rgba(77, 163, 255, 0.40);
+        }
+
+        .slide.visible .bar-fill { height: var(--h); }
+
+        .bar-labels {
+            grid-column: 2;
+            grid-row: 2;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            padding-top: 14px;
+        }
+
+        .bar-label {
+            padding: 0 6px;
+            text-align: center;
+            font-size: 20px;
+            line-height: 1.25;
+            color: var(--text-secondary);
+        }
+
+        .bar-label b {
+            display: block;
+            font-size: 22px;
+            color: var(--text-primary);
+        }
+
+        .note-stack { display: flex; flex-direction: column; gap: 24px; }
+        .note { padding: 24px 28px; }
+
+        .note .big {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 64px;
+            line-height: 1;
+        }
+
+        .note p {
+            margin-top: 10px;
+            font-size: 23px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .note p strong { color: var(--text-primary); }
+
+        /* ===========================================
+           SLIDE 7: TRADE-OFFS (real <table>)
+           =========================================== */
+        .table-layout { display: flex; flex-direction: column; }
+
+        .table-wrap {
+            overflow: hidden;
+            border-radius: 18px;
+            border: 1px solid rgba(0, 255, 204, 0.28);
+            background: rgba(10, 16, 32, 0.72);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.10), inset 0 0 36px rgba(0, 255, 204, 0.03);
+        }
+
+        .cmp {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .cmp th,
+        .cmp td {
+            padding: 0 24px;
+            text-align: left;
+            border-bottom: 1px solid var(--line-soft);
+        }
+
+        .cmp thead th {
+            height: 66px;
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 26px;
+            background: rgba(0, 255, 204, 0.05);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .cmp thead th:first-child {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .cmp tbody th {
+            font-weight: 500;
+            font-size: 23px;
+            color: var(--text-secondary);
+        }
+
+        .cmp tbody td {
+            height: 66px;
+            font-size: 25px;
+            color: var(--text-primary);
+        }
+
+        .cmp tbody tr:last-child th,
+        .cmp tbody tr:last-child td { border-bottom: 0; }
+
+        .cmp .hl {
+            background: rgba(0, 255, 204, 0.075);
+            border-left: 1px solid rgba(0, 255, 204, 0.45);
+            border-right: 1px solid rgba(0, 255, 204, 0.45);
+        }
+
+        .cmp thead th.hl {
+            color: var(--accent);
+            text-shadow: 0 0 16px var(--accent-glow);
+            box-shadow: inset 0 3px 0 var(--accent);
+        }
+
+        .cmp td.best {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .cmp td.best::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .cmp td small { font-size: 19px; color: var(--text-muted); }
+
+        .verdict-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .verdict { padding: 20px 26px; }
+        .verdict h3 { font-size: 26px; color: var(--accent); }
+        .verdict:nth-child(2) h3 { color: var(--accent-3); }
+        .verdict:nth-child(3) h3 { color: var(--accent-2); }
+
+        .verdict p {
+            margin-top: 6px;
+            font-size: 22px;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 8: LOAD BEHAVIOUR (inline SVG line chart)
+           =========================================== */
+        .line-layout {
+            display: grid;
+            grid-template-columns: 1160px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .line-card {
+            display: flex;
+            flex-direction: column;
+            padding: 22px 24px 20px;
+        }
+
+        .line-card svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .line-svg text {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            fill: var(--text-secondary);
+        }
+
+        .line-svg .axis-title { font-size: 19px; letter-spacing: 0.06em; fill: var(--text-primary); }
+        .line-svg .grid { stroke: rgba(159, 176, 204, 0.14); stroke-width: 1; }
+        .line-svg .axis { stroke: rgba(0, 255, 204, 0.45); stroke-width: 1.5; }
+        .line-svg .series { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+        .line-svg .slo-label { fill: var(--warn); font-weight: 700; }
+        .line-svg .val { font-weight: 700; font-size: 20px; }
+
+        .insight-stack { display: flex; flex-direction: column; gap: 24px; }
+        .insight { padding: 22px 28px; }
+
+        .insight .big {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 68px;
+            line-height: 1;
+        }
+
+        .insight .big small {
+            margin-left: 8px;
+            font-size: 28px;
+            color: var(--text-secondary);
+        }
+
+        .insight p {
+            margin-top: 10px;
+            font-size: 23px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .insight p strong { color: var(--text-primary); }
+
+        /* ===========================================
+           SLIDE 9: CONFIG (monospace code block)
+           =========================================== */
+        .code-layout {
+            display: grid;
+            grid-template-columns: 1100px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .code-card {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .code-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            height: 56px;
+            padding: 0 22px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(0, 255, 204, 0.05);
+        }
+
+        .code-dots i {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+
+        .code-dots i:nth-child(1) { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+        .code-dots i:nth-child(2) { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+        .code-dots i:nth-child(3) { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+        .code-file {
+            font-family: var(--font-mono);
+            font-size: 19px;
+            color: var(--text-secondary);
+        }
+
+        .code-bar .chip { margin-left: auto; }
+
+        .code-body {
+            flex: 1 1 auto;
+            display: flex;
+            padding: 22px 0;
+            background: rgba(5, 8, 18, 0.72);
+        }
+
+        .code-gutter,
+        .code-text {
+            margin: 0;
+            font-family: var(--font-mono);
+            font-size: 22px;
+            line-height: 33px;
+            white-space: pre;
+        }
+
+        .code-text code { font-family: inherit; }
+
+        .code-gutter {
+            width: 64px;
+            padding-right: 18px;
+            text-align: right;
+            color: var(--text-muted);
+            border-right: 1px solid var(--line-soft);
+        }
+
+        .code-text {
+            padding-left: 24px;
+            color: #dbe6ff;
+            overflow: hidden;
+        }
+
+        .tk-c { color: #6b7c99; font-style: italic; }
+        .tk-k { color: var(--accent); }
+        .tk-s { color: #e6f0ff; }
+        .tk-n { color: var(--accent-2); }
+        .tk-v { color: var(--warn); }
+        .tk-p { color: #8091ad; }
+
+        .callouts { display: flex; flex-direction: column; gap: 18px; }
+
+        .callout {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            column-gap: 18px;
+            align-items: start;
+            padding: 20px 24px;
+        }
+
+        .callout .ref {
+            padding: 6px 0;
+            border-radius: 8px;
+            border: 1px solid var(--accent);
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            background: rgba(0, 255, 204, 0.08);
+        }
+
+        .callout h3 { font-size: 26px; }
+
+        .callout p {
+            margin-top: 6px;
+            font-size: 22px;
+            line-height: 1.36;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 10: FIELD NOTE (quote)
+           =========================================== */
+        .quote-slide .slide-content { justify-content: space-between; }
+
+        .quote-wrap {
+            position: relative;
+            max-width: 1560px;
+            margin-left: 48px;
+        }
+
+        .quote-mark {
+            position: absolute;
+            left: -48px;
+            top: -128px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 380px;
+            line-height: 1;
+            color: var(--accent-2);
+            text-shadow: 0 0 40px rgba(255, 0, 170, 0.55), 0 0 90px rgba(255, 0, 170, 0.25);
+            opacity: 0.9;
+            pointer-events: none;
+        }
+
+        .quote-text {
+            position: relative;
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 62px;
+            line-height: 1.22;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .quote-text em {
+            font-style: normal;
+            color: var(--accent);
+            text-shadow: 0 0 22px var(--accent-glow);
+        }
+
+        .quote-attr {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            margin-top: 40px;
+        }
+
+        .quote-attr .who {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 28px;
+        }
+
+        .quote-attr .where {
+            margin-top: 4px;
+            font-size: 22px;
+            color: var(--text-secondary);
+        }
+
+        .after-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .after-card {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            padding: 20px 28px;
+        }
+
+        .after-card .big {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 56px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .after-card p {
+            font-size: 22px;
+            line-height: 1.35;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 11: LESSONS (two columns: bullets + timeline)
+           =========================================== */
+        .lessons-layout {
+            display: grid;
+            grid-template-columns: 950px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .bullets.roomy { gap: 26px; }
+        .bullets.roomy li { font-size: 27px; line-height: 1.4; }
+
+        .timeline {
+            position: relative;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            padding-left: 44px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: linear-gradient(180deg, var(--accent), var(--accent-2));
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .timeline li { position: relative; }
+
+        .timeline li::before {
+            content: '';
+            position: absolute;
+            left: -44px;
+            top: 4px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            background: var(--bg-primary);
+            box-shadow: 0 0 14px var(--accent-glow);
+        }
+
+        .timeline li:nth-child(even)::before {
+            border-color: var(--accent-2);
+            box-shadow: 0 0 14px var(--accent-2-glow);
+        }
+
+        .timeline .when {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            letter-spacing: 0.14em;
+            color: var(--accent);
+        }
+
+        .timeline h3 { margin-top: 4px; font-size: 28px; }
+
+        .timeline p {
+            margin-top: 4px;
+            font-size: 22px;
+            line-height: 1.38;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 12: CLOSING (takeaways + contact)
+           =========================================== */
+        .closing-layout {
+            display: grid;
+            grid-template-columns: 1120px 1fr;
+            grid-template-rows: minmax(0, 1fr);
+            gap: 56px;
+        }
+
+        .takeaways {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .take {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 28px 32px;
+        }
+
+        .take .n {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 56px;
+            line-height: 1;
+        }
+
+        .take h3 { font-size: 32px; }
+
+        .take p {
+            font-size: 24px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .take p strong { color: var(--text-primary); }
+
+        .thanks {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 28px;
+        }
+
+        .thanks .big {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 96px;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+            text-shadow: 0 0 28px rgba(0, 255, 204, 0.45), 0 0 80px rgba(0, 255, 204, 0.20);
+        }
+
+        .thanks .ask {
+            font-size: 28px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .contact {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-family: var(--font-mono);
+            font-size: 23px;
+            color: var(--text-primary);
+        }
+
+        .contact li span {
+            display: inline-block;
+            width: 96px;
+            font-size: 16px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        /* ===========================================
+           PRESENTATION CHROME (outside the stage)
+           progress bar, nav controls, counter
+           =========================================== */
+        .progress-track {
+            position: fixed;
+            left: 0;
+            top: 0;
+            right: 0;
+            height: 4px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .progress-fill {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            box-shadow: 0 0 14px var(--accent-glow);
+            transition: width 0.5s var(--ease-out-expo);
+        }
+
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 255, 204, 0.30);
+            background: rgba(5, 7, 15, 0.78);
+            box-shadow: 0 0 22px rgba(0, 255, 204, 0.14);
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+            opacity: 0.55;
+            transition: opacity 0.3s ease;
+        }
+
+        .deck-controls:hover { opacity: 1; }
+
+        .nav-btn {
+            width: clamp(26px, 2.2vw, 34px);
+            height: clamp(26px, 2.2vw, 34px);
+            border-radius: 50%;
+            border: 1px solid rgba(0, 255, 204, 0.40);
+            background: transparent;
+            color: var(--accent);
+            font-size: clamp(16px, 1.4vw, 22px);
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover { background: rgba(0, 255, 204, 0.15); }
+
+        .nav-dots { display: flex; gap: 8px; }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(159, 176, 204, 0.35);
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            transform: scale(1.35);
+        }
+
+        .slide-counter {
+            min-width: 64px;
+            text-align: center;
+            font-size: clamp(11px, 0.9vw, 14px);
+            letter-spacing: 0.14em;
+        }
+
+        /* ===========================================
+           INLINE EDITING UI
+           Hotzone + toggle revealed via JS (400ms grace period), or press E
+           =========================================== */
+        /* Do NOT use CSS ~ sibling selector for this!
+           pointer-events: none breaks the hover chain.
+           Must use JS with delay timeout. */
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+
+        .edit-toggle {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            background: rgba(5, 7, 15, 0.88);
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 0 16px var(--accent-glow);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+        }
+
+        .edit-toggle.show,
+        .edit-toggle.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .edit-toggle.active { background: rgba(0, 255, 204, 0.22); }
+
+        body.is-editing [contenteditable="true"] {
+            outline: 1px dashed rgba(0, 255, 204, 0.45);
+            outline-offset: 4px;
+            cursor: text;
+        }
+
+        body.is-editing [contenteditable="true"]:focus {
+            outline: 2px solid var(--accent);
+            background: rgba(0, 255, 204, 0.06);
+        }
+
+        .edit-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 204, 0.5);
+            background: rgba(5, 7, 15, 0.92);
+            font: 500 14px var(--font-mono);
+            color: var(--text-primary);
+            transform: translate(-50%, -20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 10002;
+        }
+
+        .edit-toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        @media print {
+            .progress-track,
+            .edit-hotzone,
+            .edit-toggle,
+            .edit-toast { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===========================================
+         PRESENTATION: Edge Inference at Scale
+         12 slides on a fixed 1920×1080 stage (Neon Cyber)
+         Slides are scaled as a whole by SlidePresentation.setupStageScale()
+         =========================================== -->
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- === SLIDE 1: TITLE === -->
+            <section class="slide title-slide active" aria-label="Title">
+                <!-- Particle field drawn by ParticleField (canvas) -->
+                <canvas class="particles" width="1920" height="1080" aria-hidden="true"></canvas>
+
+                <div class="title-top reveal">
+                    <div class="brand"><span class="brand-mark"></span><span>EdgeScale Conf 2026</span></div>
+                    <div>Berlin · 29 Oct 2026 · Systems Track</div>
+                </div>
+
+                <!-- Orbit: abstract neon rings and nodes -->
+                <div class="orbit reveal-scale" aria-hidden="true">
+                    <div class="ring r1"></div>
+                    <div class="ring r2"></div>
+                    <div class="ring r3"></div>
+                    <div class="core"></div>
+                    <span class="node n1"></span>
+                    <span class="node m n2"></span>
+                    <span class="node n3"></span>
+                    <span class="node m n4"></span>
+                    <span class="node n5"></span>
+                    <span class="node m n6"></span>
+                </div>
+
+                <div class="title-main">
+                    <span class="chip up reveal">Conference talk · 40 min</span>
+                    <h1 class="reveal"><span class="line-1">Edge Inference</span><span class="line-2">at Scale</span></h1>
+                    <p class="title-sub reveal">Serving <strong>sub-80 ms</strong> language models from <strong>184 cities</strong> without blowing the power budget.</p>
+                    <div class="title-speaker reveal">
+                        <div class="monogram">MO</div>
+                        <div>
+                            <div class="speaker-name">Maya Oduya</div>
+                            <div class="speaker-role">Staff Engineer, Inference Platform · Lattice Edge</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="title-metrics">
+                    <div class="metric reveal">
+                        <div class="metric-num">184<small>PoPs</small></div>
+                        <div class="metric-label">Cities in 61 countries</div>
+                    </div>
+                    <div class="metric reveal">
+                        <div class="metric-num">2.4M<small>req/s</small></div>
+                        <div class="metric-label">Peak global throughput</div>
+                    </div>
+                    <div class="metric reveal">
+                        <div class="metric-num">78<small>ms</small></div>
+                        <div class="metric-label">Median time-to-first-token</div>
+                    </div>
+                    <div class="metric reveal">
+                        <div class="metric-num">12<small>kW</small></div>
+                        <div class="metric-label">Power cap per PoP rack</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 2: AGENDA === -->
+            <section class="slide" aria-label="Agenda">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Agenda</div>
+                        <h2 class="reveal">Six stops between the user and the silicon</h2>
+                        <p class="lede reveal">A 40-minute walk through serving 2.4M req/s from 184 PoPs: the numbers, the config, the scars.</p>
+                    </header>
+
+                    <div class="slide-body agenda-layout">
+                        <!-- Left: agenda rows -->
+                        <div class="agenda-list">
+                            <div class="agenda-head label reveal">
+                                <span>No.</span>
+                                <span>Segment</span>
+                                <span class="agenda-time">Time</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">01</div>
+                                <div class="agenda-topic">
+                                    <h3>The latency budget</h3>
+                                    <p>Why a 254 ms round trip no longer fits an interactive product</p>
+                                </div>
+                                <span class="chip up agenda-time">05 min</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">02</div>
+                                <div class="agenda-topic">
+                                    <h3>Fleet and architecture</h3>
+                                    <p>Anycast PoPs, request routing and the control plane</p>
+                                </div>
+                                <span class="chip up agenda-time">08 min</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">03</div>
+                                <div class="agenda-topic">
+                                    <h3>Efficiency</h3>
+                                    <p>Quantization, silicon choice and joules per inference</p>
+                                </div>
+                                <span class="chip up agenda-time">07 min</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">04</div>
+                                <div class="agenda-topic">
+                                    <h3>Trade-offs</h3>
+                                    <p>Where central, regional, edge and on-device each win</p>
+                                </div>
+                                <span class="chip up agenda-time">05 min</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">05</div>
+                                <div class="agenda-topic">
+                                    <h3>Behaviour under load</h3>
+                                    <p>Adaptive batching, prefix caching and the p99 tail</p>
+                                </div>
+                                <span class="chip up agenda-time">08 min</span>
+                            </div>
+                            <div class="agenda-row reveal">
+                                <div class="agenda-num">06</div>
+                                <div class="agenda-topic">
+                                    <h3>Operating it</h3>
+                                    <p>Rollout config, field notes and what we would redo</p>
+                                </div>
+                                <span class="chip up agenda-time">07 min</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: audience and method cards -->
+                        <div class="side-stack">
+                            <div class="card reveal">
+                                <div class="card-title">
+                                    <span class="label">Who this is for</span>
+                                    <span class="chip cool">Intermediate</span>
+                                </div>
+                                <ul class="bullets compact">
+                                    <li>Platform engineers running inference in production</li>
+                                    <li>SREs who own a latency SLO</li>
+                                    <li>Architects weighing edge against regional GPUs</li>
+                                </ul>
+                            </div>
+                            <div class="card magenta reveal">
+                                <div class="card-title">
+                                    <span class="label">Method note</span>
+                                    <span class="chip hot">30 days</span>
+                                </div>
+                                <p>All figures are <strong>production medians to 30 Sep 2026</strong>: 7B-class decoder, AWQ INT4, 256-token prompts, unless a slide says otherwise.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">02 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 3: THE PROBLEM (bulleted list + latency budget) === -->
+            <section class="slide" aria-label="The problem">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">The problem</div>
+                        <h2 class="reveal">The round trip no longer fits the <span class="hl">budget</span></h2>
+                        <p class="lede reveal">Interactive AI features promise an answer before the user notices a wait: roughly 150 ms to the first token.</p>
+                    </header>
+
+                    <div class="slide-body problem-layout">
+                        <!-- Left: bulleted list + target strip -->
+                        <div class="problem-left">
+                            <ul class="bullets">
+                                <li class="reveal-left"><strong>Physics sets the floor.</strong> A 9,000 km round trip costs about 90 ms in fibre before a single FLOP runs.</li>
+                                <li class="reveal-left"><strong>Queues amplify it.</strong> Centralised GPU pools run at 70-85% utilisation, so p99 queueing adds 40-120 ms.</li>
+                                <li class="reveal-left"><strong>Jitter is visible.</strong> Users notice variance in time-to-first-token long before they notice the mean.</li>
+                                <li class="reveal-left"><strong>Egress is the hidden bill.</strong> Shipping prompts, images and embeddings to a few regions was 31% of serving cost.</li>
+                                <li class="reveal-left"><strong>Residency rules tighten.</strong> Eleven of our top 30 markets now require in-country processing for some inputs.</li>
+                                <li class="reveal-left"><strong>Power is the real cap.</strong> A PoP rack gives us 12 kW; every watt per inference is a trade against capacity.</li>
+                            </ul>
+                            <div class="card magenta goal reveal">
+                                <span class="label">Target</span>
+                                <p>First token in <strong>under 150 ms</strong> at the median and <strong>under 300 ms</strong> at p99, from any of 61 countries.</p>
+                            </div>
+                        </div>
+
+                        <!-- Right: stacked latency budget built from divs -->
+                        <div class="card reveal">
+                            <div class="card-title">
+                                <span class="label">Latency budget, one request (ms)</span>
+                                <span class="chip up">3.3x faster</span>
+                            </div>
+
+                            <div class="budget-row">
+                                <div class="row-head"><span class="row-name">Central region</span><span class="row-total hot">254 ms</span></div>
+                                <div class="stack central">
+                                    <span class="seg rtt" style="--ms:96"></span>
+                                    <span class="seg tls" style="--ms:24"></span>
+                                    <span class="seg queue" style="--ms:38"></span>
+                                    <span class="seg prefill" style="--ms:74"></span>
+                                    <span class="seg decode" style="--ms:22"></span>
+                                </div>
+                            </div>
+
+                            <div class="budget-row">
+                                <div class="row-head"><span class="row-name">Edge PoP</span><span class="row-total">78 ms</span></div>
+                                <div class="stack edge">
+                                    <span class="seg rtt" style="--ms:9"></span>
+                                    <span class="seg tls" style="--ms:3"></span>
+                                    <span class="seg queue" style="--ms:11"></span>
+                                    <span class="seg prefill" style="--ms:41"></span>
+                                    <span class="seg decode" style="--ms:14"></span>
+                                </div>
+                            </div>
+
+                            <div class="budget-legend">
+                                <span></span><span class="head">Stage</span><span class="head num">Central</span><span class="head num">Edge</span>
+                                <i class="sw" style="background: var(--accent-2)"></i><span>Network round trip</span><span class="num">96</span><span class="num">9</span>
+                                <i class="sw" style="background: var(--warn)"></i><span>TLS and connect</span><span class="num">24</span><span class="num">3</span>
+                                <i class="sw" style="background: var(--accent-3)"></i><span>Queue and batch wait</span><span class="num">38</span><span class="num">11</span>
+                                <i class="sw" style="background: var(--accent)"></i><span>Prefill</span><span class="num">74</span><span class="num">41</span>
+                                <i class="sw" style="background: #e6f0ff"></i><span>First decode step</span><span class="num">22</span><span class="num">14</span>
+                                <span></span><span class="total">Time to first token</span><span class="num total">254</span><span class="num total">78</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">03 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 4: FLEET AT A GLANCE (stat cards) === -->
+            <section class="slide" aria-label="Fleet at a glance">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Fleet</div>
+                        <h2 class="reveal">184 cities, <span class="hl">2.4 million</span> requests a second</h2>
+                        <p class="lede reveal">Production medians over the 30 days to 30 Sep 2026; 7B-class decoder, AWQ INT4 unless noted.</p>
+                    </header>
+
+                    <div class="slide-body stat-grid">
+                        <div class="card stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">Points of presence</span>
+                                <svg class="spark" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,34 20,32 40,28 60,24 80,19 100,12 120,5"/><circle cx="120" cy="5" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">184</div>
+                            <div class="stat-desc">Cities in <strong>61 countries</strong>, each running inference inside a 12 kW rack envelope.</div>
+                            <span class="chip up">+37 this year</span>
+                        </div>
+
+                        <div class="card stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">Peak throughput</span>
+                                <svg class="spark" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,36 20,33 40,34 60,26 80,22 100,14 120,6"/><circle cx="120" cy="6" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">2.4<span class="unit">M req/s</span></div>
+                            <div class="stat-desc">Global 30-day high, served across <strong>all tiers</strong> and 14 production models.</div>
+                            <span class="chip up">3.1x year on year</span>
+                        </div>
+
+                        <div class="card magenta stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">Median time-to-first-token</span>
+                                <svg class="spark hot" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,6 20,9 40,12 60,20 80,26 100,31 120,34"/><circle cx="120" cy="34" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">78<span class="unit">ms</span></div>
+                            <div class="stat-desc">At the edge, against <strong>254 ms</strong> on the central-region path.</div>
+                            <span class="chip hot">-69% vs. central</span>
+                        </div>
+
+                        <div class="card stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">Energy per 1k inferences</span>
+                                <svg class="spark" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,8 20,12 40,18 60,22 80,28 100,31 120,35"/><circle cx="120" cy="35" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">&minus;71<span class="unit">%</span></div>
+                            <div class="stat-desc">Fleet-weighted, against the <strong>FP16 datacenter-GPU</strong> baseline.</div>
+                            <span class="chip up">4.8 to 1.4 Wh</span>
+                        </div>
+
+                        <div class="card stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">90-day availability</span>
+                                <svg class="spark" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,14 20,10 40,16 60,9 80,12 100,8 120,10"/><circle cx="120" cy="10" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">99.97<span class="unit">%</span></div>
+                            <div class="stat-desc">Requests answered inside SLO; the target is <strong>99.95%</strong>.</div>
+                            <span class="chip up">0 Sev-1 incidents</span>
+                        </div>
+
+                        <div class="card stat-card reveal-scale">
+                            <div class="stat-top">
+                                <span class="label">Network egress spend</span>
+                                <svg class="spark" viewBox="0 0 120 40" aria-hidden="true"><polyline points="0,6 20,10 40,14 60,22 80,25 100,30 120,34"/><circle cx="120" cy="34" r="3.5"/></svg>
+                            </div>
+                            <div class="stat-num">&minus;34<span class="unit">%</span></div>
+                            <div class="stat-desc">Prompts and embeddings now stay <strong>in-region</strong> instead of crossing oceans.</div>
+                            <span class="chip up">$1.9M saved / yr</span>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">04 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 5: ARCHITECTURE (two-column layout) === -->
+            <section class="slide" aria-label="Architecture">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Architecture</div>
+                        <h2 class="reveal">One request, five hops, <span class="hl">under 80 ms</span></h2>
+                        <p class="lede reveal">Anycast steers the user to the nearest PoP; everything after that is a local decision.</p>
+                    </header>
+
+                    <div class="slide-body arch-layout">
+                        <!-- Left column: numbered hops -->
+                        <ol class="steps">
+                            <li class="reveal-left">
+                                <h3>Anycast landing</h3>
+                                <p>BGP anycast lands the connection at the nearest healthy PoP and TLS 0-RTT resumes the session. <b>9 ms</b> median.</p>
+                            </li>
+                            <li class="reveal-left">
+                                <h3>Admission and routing</h3>
+                                <p>The router reads tenant, model and priority, then picks a replica by <b>queue delay</b>, not round-robin.</p>
+                            </li>
+                            <li class="reveal-left">
+                                <h3>Prefix and semantic cache</h3>
+                                <p>KV-prefix reuse and an embedding cache answer or shorten <b>18%</b> of prompts before an accelerator is touched.</p>
+                            </li>
+                            <li class="reveal-left">
+                                <h3>Quantized runtime</h3>
+                                <p>AWQ INT4 7B model on NPU or GPU, with continuous batching and paged KV memory.</p>
+                            </li>
+                            <li class="reveal-left">
+                                <h3>Overflow and fallback</h3>
+                                <p>When queue delay passes <b>12 ms</b>, the router spills to the regional GPU pool and tags the request for replay.</p>
+                            </li>
+                        </ol>
+
+                        <!-- Right column: request path diagram built from divs -->
+                        <div class="card diagram-card reveal">
+                            <div class="card-title">
+                                <span class="label">Request path</span>
+                                <span class="chip up">p50 78 ms</span>
+                            </div>
+                            <div class="diagram">
+                                <div class="dg-node client" style="grid-column: 1; grid-row: 1;">
+                                    <span class="tag">User</span>
+                                    <span class="name">Client</span>
+                                    <span class="meta">App or browser, 9 ms away</span>
+                                </div>
+                                <div class="dg-arrow" style="grid-column: 2; grid-row: 1;"></div>
+                                <div class="dg-node" style="grid-column: 3; grid-row: 1;">
+                                    <span class="tag">Hop 1</span>
+                                    <span class="name">Anycast PoP</span>
+                                    <span class="meta">Nearest healthy site, 0-RTT TLS</span>
+                                </div>
+                                <div class="dg-arrow" style="grid-column: 4; grid-row: 1;"></div>
+                                <div class="dg-node" style="grid-column: 5; grid-row: 1;">
+                                    <span class="tag">Hop 2</span>
+                                    <span class="name">Router</span>
+                                    <span class="meta">Tenant, model, priority; queue-aware</span>
+                                </div>
+                                <div class="dg-arrow" style="grid-column: 6; grid-row: 1;"></div>
+                                <div class="dg-node hot" style="grid-column: 7; grid-row: 1;">
+                                    <span class="tag">Hop 4</span>
+                                    <span class="name">INT4 runtime</span>
+                                    <span class="meta">Continuous batching, paged KV</span>
+                                </div>
+
+                                <div class="dg-varrow" style="grid-column: 5; grid-row: 2;"></div>
+                                <div class="dg-varrow m" style="grid-column: 7; grid-row: 2;"></div>
+
+                                <div class="dg-legend">
+                                    <span>Hot path, served locally</span>
+                                    <span class="m">Overflow path, spill to region</span>
+                                </div>
+                                <div class="dg-node" style="grid-column: 5; grid-row: 3;">
+                                    <span class="tag">Hop 3</span>
+                                    <span class="name">Prefix cache</span>
+                                    <span class="meta">18% of prompts shortened</span>
+                                </div>
+                                <div class="dg-node spill" style="grid-column: 7; grid-row: 3;">
+                                    <span class="tag">Hop 5 · spill</span>
+                                    <span class="name">Regional GPU pool</span>
+                                    <span class="meta">Queue delay over 12 ms</span>
+                                </div>
+
+                                <div class="dg-band">
+                                    <span class="band-label">Control plane</span>
+                                    <div class="dg-chip"><b>Model registry</b>Signed artifacts, per-PoP pinning</div>
+                                    <div class="dg-chip"><b>Rollout controller</b>Canary gates, auto-revert</div>
+                                    <div class="dg-chip"><b>Telemetry</b>SLO guard, queue-delay export</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">05 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 6: EFFICIENCY (CSS-only bar chart) === -->
+            <section class="slide" aria-label="Efficiency">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Efficiency</div>
+                        <h2 class="reveal">The right silicon plus INT4 cuts energy <span class="hl">12&times;</span></h2>
+                        <p class="lede reveal">Energy per 1,000 inferences in Wh: 7B-class decoder, 256-token prompts, steady state at 60% load.</p>
+                    </header>
+
+                    <div class="slide-body bars-layout">
+                        <!-- Left: bar chart built from divs, bars grow via CSS transition -->
+                        <div class="card chart-card reveal">
+                            <div class="card-title">
+                                <span class="label">Wh per 1,000 inferences (lower is better)</span>
+                                <div class="chart-legend">
+                                    <span><i style="background: var(--accent-2)"></i>Datacenter</span>
+                                    <span><i style="background: var(--accent)"></i>Edge PoP</span>
+                                    <span><i style="background: var(--accent-3)"></i>On-device</span>
+                                </div>
+                            </div>
+
+                            <div class="bar-chart" role="img" aria-label="Bar chart of energy per 1,000 inferences by accelerator class">
+                                <div class="bar-yaxis">
+                                    <span class="yl" style="--y: 0%">0</span>
+                                    <span class="yl" style="--y: 33.33%">2</span>
+                                    <span class="yl" style="--y: 66.67%">4</span>
+                                    <span class="yl" style="--y: 100%">6</span>
+                                </div>
+                                <div class="bar-plot">
+                                    <div class="gl" style="--y: 33.33%"></div>
+                                    <div class="gl" style="--y: 66.67%"></div>
+                                    <div class="gl" style="--y: 100%"></div>
+                                    <div class="bar-cols">
+                                        <div class="bar-col"><span class="bar-val">4.80</span><div class="bar-fill dc" style="--h: 80%"></div></div>
+                                        <div class="bar-col"><span class="bar-val">2.90</span><div class="bar-fill dc" style="--h: 48.33%"></div></div>
+                                        <div class="bar-col"><span class="bar-val">1.60</span><div class="bar-fill" style="--h: 26.67%"></div></div>
+                                        <div class="bar-col"><span class="bar-val">0.90</span><div class="bar-fill" style="--h: 15%"></div></div>
+                                        <div class="bar-col"><span class="bar-val">0.55</span><div class="bar-fill" style="--h: 9.17%"></div></div>
+                                        <div class="bar-col"><span class="bar-val">0.38</span><div class="bar-fill mob" style="--h: 6.33%"></div></div>
+                                    </div>
+                                </div>
+                                <div class="bar-labels">
+                                    <div class="bar-label"><b>GPU, FP16</b>Datacenter</div>
+                                    <div class="bar-label"><b>GPU, INT8</b>Datacenter</div>
+                                    <div class="bar-label"><b>GPU, INT8</b>Edge PoP</div>
+                                    <div class="bar-label"><b>NPU, INT8</b>Edge PoP</div>
+                                    <div class="bar-label"><b>NPU, INT4</b>Edge PoP</div>
+                                    <div class="bar-label"><b>SoC, INT4</b>On-device</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: three takeaways -->
+                        <div class="note-stack">
+                            <div class="card note reveal">
+                                <div class="big glow-text">12.6&times;</div>
+                                <p>less energy per inference from FP16 datacenter GPUs to INT4 on a mobile SoC: <strong>4.80 to 0.38 Wh</strong>.</p>
+                            </div>
+                            <div class="card note reveal">
+                                <div class="big glow-text">8.7&times;</div>
+                                <p>more inferences from the same <strong>12 kW rack</strong>: about 6,100 a second on INT4 NPUs against 700 on FP16 GPUs.</p>
+                            </div>
+                            <div class="card magenta note reveal">
+                                <div class="big glow-text magenta">&minus;0.6 pt</div>
+                                <p>quality cost of AWQ INT4 on our 40-task eval suite. <strong>Tail-sensitive models stay on INT8.</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">06 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 7: TRADE-OFFS (comparison table) === -->
+            <section class="slide" aria-label="Trade-offs">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Trade-offs</div>
+                        <h2 class="reveal">Edge wins on latency and residency, <span class="hl">not size</span></h2>
+                        <p class="lede reveal">Four ways to serve the same assistant workload, measured from real end-user networks over 30 days.</p>
+                    </header>
+
+                    <div class="slide-body table-layout">
+                        <div class="table-wrap reveal">
+                            <table class="cmp">
+                                <colgroup>
+                                    <col style="width: 360px">
+                                    <col>
+                                    <col>
+                                    <col>
+                                    <col>
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Dimension</th>
+                                        <th scope="col">Central cloud</th>
+                                        <th scope="col">Regional GPU</th>
+                                        <th scope="col" class="hl">Edge PoP</th>
+                                        <th scope="col">On-device</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th scope="row">Median network RTT</th>
+                                        <td>96 ms</td>
+                                        <td>38 ms</td>
+                                        <td class="hl">9 ms</td>
+                                        <td class="best">0 ms</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Median time-to-first-token</th>
+                                        <td>254 ms</td>
+                                        <td>171 ms</td>
+                                        <td class="hl best">78 ms</td>
+                                        <td>112 ms</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">p99 time-to-first-token</th>
+                                        <td>610 ms</td>
+                                        <td>340 ms</td>
+                                        <td class="hl best">142 ms</td>
+                                        <td>480 ms</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Largest practical model</th>
+                                        <td class="best">70B+</td>
+                                        <td>70B</td>
+                                        <td class="hl">13B INT4</td>
+                                        <td>3B INT4</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Cost per 1M tokens</th>
+                                        <td>$0.60</td>
+                                        <td>$0.71</td>
+                                        <td class="hl">$0.94</td>
+                                        <td class="best">$0.00 <small>user's battery</small></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Data residency</th>
+                                        <td>Region-locked</td>
+                                        <td>Per country, limited</td>
+                                        <td class="hl">In-country default</td>
+                                        <td class="best">Never leaves device</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Operational burden</th>
+                                        <td class="best">Low</td>
+                                        <td>Medium</td>
+                                        <td class="hl">High, automated</td>
+                                        <td>Very high, fragmented</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="verdict-row">
+                            <div class="card verdict reveal">
+                                <h3>Choose edge when</h3>
+                                <p>p99 time-to-first-token must stay under 150 ms, or inputs must be processed in-country.</p>
+                            </div>
+                            <div class="card verdict reveal">
+                                <h3>Choose regional when</h3>
+                                <p>the model is larger than 13B, or traffic is global, spiky and tolerant of 300 ms.</p>
+                            </div>
+                            <div class="card verdict reveal">
+                                <h3>Choose on-device when</h3>
+                                <p>inputs are private by nature and a 3B model is good enough for the task.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">07 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 8: LOAD BEHAVIOUR (inline SVG line chart) === -->
+            <section class="slide" aria-label="Load behaviour">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Load behaviour</div>
+                        <h2 class="reveal">Batching and caching lift SLO capacity by <span class="hl">73%</span></h2>
+                        <p class="lede reveal">p99 queueing delay per PoP as load rises: same hardware, same model, same 40 ms SLO.</p>
+                    </header>
+
+                    <div class="slide-body line-layout">
+                        <div class="card line-card reveal">
+                            <div class="card-title">
+                                <span class="label">p99 queueing delay vs. load per PoP</span>
+                                <div class="chart-legend">
+                                    <span><i style="background: var(--accent-2)"></i>Static batching</span>
+                                    <span><i style="background: var(--accent-3)"></i>Adaptive</span>
+                                    <span><i style="background: var(--accent)"></i>Adaptive + prefix cache</span>
+                                </div>
+                            </div>
+
+                            <svg class="line-svg" viewBox="0 0 1120 510" role="img" aria-label="Line chart of p99 queueing delay in milliseconds against load per PoP in thousand requests per second, for static batching, adaptive batching, and adaptive batching with a prefix cache">
+                                <defs>
+                                    <linearGradient id="areaCyan" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#00ffcc" stop-opacity="0.28"/>
+                                        <stop offset="1" stop-color="#00ffcc" stop-opacity="0"/>
+                                    </linearGradient>
+                                    <filter id="neonGlow" x="-10%" y="-10%" width="120%" height="120%">
+                                        <feGaussianBlur stdDeviation="4" result="blur"/>
+                                        <feMerge>
+                                            <feMergeNode in="blur"/>
+                                            <feMergeNode in="SourceGraphic"/>
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+
+                                <!-- Grid lines -->
+                                <line class="grid" x1="90" y1="330" x2="1050" y2="330"/>
+                                <line class="grid" x1="90" y1="230" x2="1050" y2="230"/>
+                                <line class="grid" x1="90" y1="130" x2="1050" y2="130"/>
+                                <line class="grid" x1="90" y1="30" x2="1050" y2="30"/>
+                                <line class="grid" x1="250" y1="30" x2="250" y2="430"/>
+                                <line class="grid" x1="410" y1="30" x2="410" y2="430"/>
+                                <line class="grid" x1="570" y1="30" x2="570" y2="430"/>
+                                <line class="grid" x1="730" y1="30" x2="730" y2="430"/>
+                                <line class="grid" x1="890" y1="30" x2="890" y2="430"/>
+                                <line class="grid" x1="1050" y1="30" x2="1050" y2="430"/>
+
+                                <!-- Axes -->
+                                <line class="axis" x1="90" y1="430" x2="1050" y2="430"/>
+                                <line class="axis" x1="90" y1="30" x2="90" y2="430"/>
+
+                                <!-- Y tick labels -->
+                                <text x="76" y="436" text-anchor="end">0</text>
+                                <text x="76" y="336" text-anchor="end">20</text>
+                                <text x="76" y="236" text-anchor="end">40</text>
+                                <text x="76" y="136" text-anchor="end">60</text>
+                                <text x="76" y="36" text-anchor="end">80</text>
+
+                                <!-- X tick labels -->
+                                <text x="90" y="462" text-anchor="middle">0</text>
+                                <text x="250" y="462" text-anchor="middle">20k</text>
+                                <text x="410" y="462" text-anchor="middle">40k</text>
+                                <text x="570" y="462" text-anchor="middle">60k</text>
+                                <text x="730" y="462" text-anchor="middle">80k</text>
+                                <text x="890" y="462" text-anchor="middle">100k</text>
+                                <text x="1050" y="462" text-anchor="middle">120k</text>
+
+                                <!-- Axis titles -->
+                                <text class="axis-title" x="570" y="500" text-anchor="middle">Load per PoP (requests / second)</text>
+                                <text class="axis-title" transform="rotate(-90)" x="-230" y="22" text-anchor="middle">p99 queueing delay (ms)</text>
+
+                                <!-- SLO line -->
+                                <line x1="90" y1="230" x2="1050" y2="230" stroke="#ffd166" stroke-width="2" stroke-dasharray="10 8"/>
+                                <text class="slo-label" x="104" y="220">SLO: p99 &le; 40 ms</text>
+
+                                <!-- Area under the best series -->
+                                <path d="M90,375 L250,370 L410,360 L570,340 L730,310 L890,265 L1050,200 L1050,430 L90,430 Z" fill="url(#areaCyan)"/>
+
+                                <!-- Series: static batching (magenta) -->
+                                <polyline class="series" stroke="#ff00aa" points="90,365 250,355 410,320 570,250 730,140 890,45"/>
+                                <!-- Series: adaptive batching (blue) -->
+                                <polyline class="series" stroke="#4da3ff" points="90,370 250,365 410,350 570,320 730,265 890,190 1050,75"/>
+                                <!-- Series: adaptive + prefix cache (cyan, glowing) -->
+                                <polyline class="series" stroke="#00ffcc" filter="url(#neonGlow)" points="90,375 250,370 410,360 570,340 730,310 890,265 1050,200"/>
+
+                                <!-- Data points -->
+                                <g fill="#0a0f1c" stroke-width="3">
+                                    <circle cx="250" cy="355" r="5" stroke="#ff00aa"/>
+                                    <circle cx="410" cy="320" r="5" stroke="#ff00aa"/>
+                                    <circle cx="570" cy="250" r="5" stroke="#ff00aa"/>
+                                    <circle cx="730" cy="140" r="5" stroke="#ff00aa"/>
+                                    <circle cx="890" cy="45" r="6" stroke="#ff00aa"/>
+                                    <circle cx="410" cy="350" r="5" stroke="#4da3ff"/>
+                                    <circle cx="570" cy="320" r="5" stroke="#4da3ff"/>
+                                    <circle cx="730" cy="265" r="5" stroke="#4da3ff"/>
+                                    <circle cx="890" cy="190" r="5" stroke="#4da3ff"/>
+                                    <circle cx="1050" cy="75" r="6" stroke="#4da3ff"/>
+                                    <circle cx="410" cy="360" r="5" stroke="#00ffcc"/>
+                                    <circle cx="570" cy="340" r="5" stroke="#00ffcc"/>
+                                    <circle cx="730" cy="310" r="5" stroke="#00ffcc"/>
+                                    <circle cx="890" cy="265" r="5" stroke="#00ffcc"/>
+                                    <circle cx="1050" cy="200" r="6" stroke="#00ffcc"/>
+                                </g>
+
+                                <!-- Where each series crosses the 40 ms SLO -->
+                                <g fill="#ffd166" stroke="#0a0f1c" stroke-width="2">
+                                    <circle cx="599" cy="230" r="8"/>
+                                    <circle cx="805" cy="230" r="8"/>
+                                    <circle cx="976" cy="230" r="8"/>
+                                </g>
+
+                                <!-- End-of-line values -->
+                                <text class="val" x="904" y="52" style="fill: #ff00aa">77 ms</text>
+                                <text class="val" x="1062" y="82" style="fill: #4da3ff">71 ms</text>
+                                <text class="val" x="1062" y="207" style="fill: #00ffcc">46 ms</text>
+                            </svg>
+                        </div>
+
+                        <div class="insight-stack">
+                            <div class="card insight reveal">
+                                <div class="big glow-text">&minus;57%<small>p99 queue delay</small></div>
+                                <p>at 100k req/s per PoP: <strong>77 ms down to 33 ms</strong> with adaptive batching and the prefix cache switched on.</p>
+                            </div>
+                            <div class="card insight reveal">
+                                <div class="big glow-text">111k<small>req/s per PoP</small></div>
+                                <p>before the 40 ms SLO breaks, up from <strong>64k</strong> with static batching. Adaptive batching alone reaches 89k.</p>
+                            </div>
+                            <div class="card magenta insight reveal">
+                                <div class="big glow-text magenta">0<small>extra accelerators</small></div>
+                                <p>The gain is scheduling and cache hits on <strong>18% of prompts</strong>. No hardware was added to any PoP.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">08 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 9: CONFIG (monospace code block) === -->
+            <section class="slide" aria-label="Configuration">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Config</div>
+                        <h2 class="reveal">The whole rollout fits in <span class="hl">one manifest</span></h2>
+                        <p class="lede reveal">Every model ships as a declarative manifest; the controller does the rest, PoP by PoP.</p>
+                    </header>
+
+                    <div class="slide-body code-layout">
+                        <!-- Left: code block (gutter and code share one line-height so rows align) -->
+                        <div class="card code-card reveal">
+                            <div class="code-bar">
+                                <span class="code-dots"><i></i><i></i><i></i></span>
+                                <span class="code-file">edge-deploy.yaml</span>
+                                <span class="chip cool">YAML</span>
+                            </div>
+                            <div class="code-body">
+<pre class="code-gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18</pre>
+<pre class="code-text"><code><span class="tk-c"># edge-deploy.yaml: one manifest per model, rolled out per PoP cohort</span>
+<span class="tk-k">apiVersion</span><span class="tk-p">:</span> <span class="tk-s">edge.lattice.example/v2</span>
+<span class="tk-k">kind</span><span class="tk-p">:</span> <span class="tk-s">ModelDeployment</span>
+<span class="tk-k">metadata</span><span class="tk-p">:</span>
+  <span class="tk-k">name</span><span class="tk-p">:</span> <span class="tk-s">assist-7b-int4</span>
+<span class="tk-k">spec</span><span class="tk-p">:</span>
+  <span class="tk-k">artifact</span><span class="tk-p">:</span> <span class="tk-s">registry.lattice.example/assist/7b@sha256:9f2c...e41a</span>
+  <span class="tk-k">quantization</span><span class="tk-p">: {</span> <span class="tk-k">scheme</span><span class="tk-p">:</span> <span class="tk-v">awq-int4</span><span class="tk-p">,</span> <span class="tk-k">group_size</span><span class="tk-p">:</span> <span class="tk-n">128</span> <span class="tk-p">}</span>
+  <span class="tk-k">placement</span><span class="tk-p">:</span>
+    <span class="tk-k">tier</span><span class="tk-p">:</span> <span class="tk-v">pop</span>
+    <span class="tk-k">min_replicas</span><span class="tk-p">:</span> <span class="tk-n">2</span>
+    <span class="tk-k">fallback</span><span class="tk-p">:</span> <span class="tk-v">regional-gpu</span>
+  <span class="tk-k">batching</span><span class="tk-p">: {</span> <span class="tk-k">mode</span><span class="tk-p">:</span> <span class="tk-v">adaptive</span><span class="tk-p">,</span> <span class="tk-k">max_wait_ms</span><span class="tk-p">:</span> <span class="tk-n">6</span><span class="tk-p">,</span> <span class="tk-k">max_batch</span><span class="tk-p">:</span> <span class="tk-n">32</span> <span class="tk-p">}</span>
+  <span class="tk-k">autoscale</span><span class="tk-p">:</span>
+    <span class="tk-k">signal</span><span class="tk-p">:</span> <span class="tk-v">queue_ms_p95</span>
+    <span class="tk-k">target</span><span class="tk-p">:</span> <span class="tk-n">12</span>
+    <span class="tk-k">cooldown_s</span><span class="tk-p">:</span> <span class="tk-n">45</span>
+  <span class="tk-k">rollout</span><span class="tk-p">: {</span> <span class="tk-k">strategy</span><span class="tk-p">:</span> <span class="tk-v">canary</span><span class="tk-p">,</span> <span class="tk-k">steps</span><span class="tk-p">: [</span><span class="tk-n">1</span><span class="tk-p">,</span> <span class="tk-n">5</span><span class="tk-p">,</span> <span class="tk-n">25</span><span class="tk-p">,</span> <span class="tk-n">100</span><span class="tk-p">],</span> <span class="tk-k">bake_min</span><span class="tk-p">:</span> <span class="tk-n">20</span> <span class="tk-p">}</span></code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Right: annotations keyed to line numbers -->
+                        <div class="callouts">
+                            <div class="card callout reveal">
+                                <span class="ref">L8</span>
+                                <div>
+                                    <h3>Quantization</h3>
+                                    <p>AWQ INT4, group size 128. Costs 0.6 pt on the eval suite and cuts weight memory about 3.8x.</p>
+                                </div>
+                            </div>
+                            <div class="card callout reveal">
+                                <span class="ref">L13</span>
+                                <div>
+                                    <h3>Adaptive batching</h3>
+                                    <p>Waits at most 6 ms to fill a batch of 32. This is the setting behind the knee on the previous slide.</p>
+                                </div>
+                            </div>
+                            <div class="card callout reveal">
+                                <span class="ref">L15-17</span>
+                                <div>
+                                    <h3>Autoscale on queue delay</h3>
+                                    <p>Scale on p95 queue time, not CPU. Target 12 ms with a 45 s cooldown to avoid flapping.</p>
+                                </div>
+                            </div>
+                            <div class="card magenta callout reveal">
+                                <span class="ref">L18</span>
+                                <div>
+                                    <h3>Canary rollout</h3>
+                                    <p>1, 5, 25, 100% of PoPs with a 20 min bake per step. The SLO guard auto-reverts on breach.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">09 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 10: FIELD NOTE (quote) === -->
+            <section class="slide quote-slide" aria-label="Field note">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Field note</div>
+                    </header>
+
+                    <figure class="quote-wrap">
+                        <div class="quote-mark reveal-blur" aria-hidden="true">&ldquo;</div>
+                        <blockquote class="quote-text reveal-blur">We stopped asking which region is closest and started asking <em>which milliseconds we can afford</em>. The edge turned that into a config change instead of a migration.</blockquote>
+                        <figcaption class="quote-attr reveal">
+                            <div class="monogram">PE</div>
+                            <div>
+                                <div class="who">Head of Platform Engineering</div>
+                                <div class="where">Tier-1 retail customer · Q3 2026 rollout retrospective</div>
+                            </div>
+                        </figcaption>
+                    </figure>
+
+                    <div class="after-strip">
+                        <div class="card after-card reveal">
+                            <div class="big glow-text">&minus;41%</div>
+                            <p>support tickets saying the assistant feels slow</p>
+                        </div>
+                        <div class="card after-card reveal">
+                            <div class="big glow-text">142 ms</div>
+                            <p>p99 time-to-first-token, down from 610 ms on the central path</p>
+                        </div>
+                        <div class="card magenta after-card reveal">
+                            <div class="big glow-text magenta">6 wks</div>
+                            <p>to launch in a new country, down from two quarters</p>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">10 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 11: LESSONS (two columns: bulleted list + timeline) === -->
+            <section class="slide" aria-label="Lessons and roadmap">
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Lessons</div>
+                        <h2 class="reveal">What we would redo, and <span class="hl">what comes next</span></h2>
+                        <p class="lede reveal">Three years of running inference at the edge, compressed into six regrets and four milestones.</p>
+                    </header>
+
+                    <div class="slide-body lessons-layout">
+                        <ul class="bullets roomy">
+                            <li class="reveal-left"><strong>Treat PoPs as cattle on day one.</strong> Hand-tuned sites cost us 14 incident-hours before provisioning was automated.</li>
+                            <li class="reveal-left"><strong>Measure queue delay, not utilisation.</strong> GPU utilisation sat at 90% while p99 was fine, and the reverse.</li>
+                            <li class="reveal-left"><strong>Ship the fallback first.</strong> Overflow to regional GPUs turned three Sev-1s into non-events.</li>
+                            <li class="reveal-left"><strong>Version models and runtimes together.</strong> Mismatched kernels caused 60% of our canary rollbacks.</li>
+                            <li class="reveal-left"><strong>Budget watts like milliseconds.</strong> Rack power, not rack space, is the scarce resource at a PoP.</li>
+                            <li class="reveal-left"><strong>Keep evals at the edge.</strong> Quality drift only showed up on real traffic, never on the offline suite.</li>
+                        </ul>
+
+                        <div class="card reveal">
+                            <div class="card-title">
+                                <span class="label">Roadmap, next 12 months</span>
+                                <span class="chip warn">Planned</span>
+                            </div>
+                            <ol class="timeline">
+                                <li>
+                                    <div class="when">Q4 2026</div>
+                                    <h3>Speculative decoding on NPUs</h3>
+                                    <p>Draft-model decoding with a target of 25% lower median time-to-first-token.</p>
+                                </li>
+                                <li>
+                                    <div class="when">Q1 2027</div>
+                                    <h3>Multi-model co-residency</h3>
+                                    <p>Three models per node sharing one KV pool to lift accelerator utilisation.</p>
+                                </li>
+                                <li>
+                                    <div class="when">Q2 2027</div>
+                                    <h3>Federated quality telemetry</h3>
+                                    <p>Privacy-preserving eval signals from live traffic; no prompts leave the PoP.</p>
+                                </li>
+                                <li>
+                                    <div class="when">Q3 2027</div>
+                                    <h3>250 PoPs, same 12 kW cap</h3>
+                                    <p>66 new cities, with power per inference falling another 30%.</p>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">11 / 12</span></footer>
+            </section>
+
+            <!-- === SLIDE 12: CLOSING (takeaways + contact, particle canvas) === -->
+            <section class="slide closing-slide" aria-label="Takeaways">
+                <canvas class="particles" width="1920" height="1080" aria-hidden="true"></canvas>
+                <div class="slide-content">
+                    <header class="slide-head">
+                        <div class="eyebrow reveal">Takeaways</div>
+                        <h2 class="reveal">Four things to take back to your <span class="hl">own fleet</span></h2>
+                        <p class="lede reveal">The playbook on one slide, with the numbers that justify each line.</p>
+                    </header>
+
+                    <div class="slide-body closing-layout">
+                        <div class="takeaways">
+                            <div class="card take reveal">
+                                <div class="n glow-text">01</div>
+                                <h3>Budget in milliseconds</h3>
+                                <p>Write the latency budget first. <strong>254 to 78 ms</strong> came from removing hops, not from tuning kernels.</p>
+                            </div>
+                            <div class="card take reveal">
+                                <div class="n glow-text">02</div>
+                                <h3>Quantize, then pick silicon</h3>
+                                <p>INT4 on edge NPUs gives <strong>8.7x more inferences</strong> from each 12 kW rack for a 0.6 pt quality cost.</p>
+                            </div>
+                            <div class="card take reveal">
+                                <div class="n glow-text">03</div>
+                                <h3>Schedule for the tail</h3>
+                                <p>Adaptive batching plus a prefix cache lifts SLO capacity by <strong>73%</strong> on the same hardware.</p>
+                            </div>
+                            <div class="card magenta take reveal">
+                                <div class="n glow-text magenta">04</div>
+                                <h3>Automate the fleet</h3>
+                                <p>One manifest, canary gates and auto-revert run <strong>184 PoPs</strong> without a pager storm.</p>
+                            </div>
+                        </div>
+
+                        <div class="thanks">
+                            <div class="big reveal">Questions?</div>
+                            <p class="ask reveal">Slides, raw benchmark data and the full manifest are open.</p>
+                            <ul class="contact reveal">
+                                <li><span>Email</span>maya@lattice-edge.example</li>
+                                <li><span>Slides</span>lattice-edge.example/edgescale26</li>
+                                <li><span>Room</span>Systems Track · Hall B</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <footer class="slide-foot"><span>Edge Inference at Scale · EdgeScale Conf 2026</span><span class="pg">12 / 12</span></footer>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===========================================
+         PRESENTATION CHROME (outside the stage)
+         Progress bar, slide counter, navigation controls
+         =========================================== -->
+    <div class="progress-track" aria-hidden="true">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <nav class="deck-controls" aria-label="Slide navigation">
+        <button class="nav-btn" id="prevBtn" aria-label="Previous slide">&lsaquo;</button>
+        <div class="nav-dots" id="navDots"></div>
+        <span class="slide-counter" id="slideCounter">01 / 12</span>
+        <button class="nav-btn" id="nextBtn" aria-label="Next slide">&rsaquo;</button>
+    </nav>
+
+    <!-- ===========================================
+         INLINE EDITING UI
+         Hover the top-left corner or press E to reveal the toggle
+         =========================================== -->
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+    <div class="edit-toast" id="editToast" role="status" aria-live="polite"></div>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           Keyboard, touch, wheel and button navigation.
+           Scales the fixed 1920×1080 stage to the viewport.
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = Array.from(document.querySelectorAll('.slide'));
+                this.currentSlide = 0;
+                this.stage = document.getElementById('deckStage');
+                this.progressFill = document.getElementById('progressFill');
+                this.counter = document.getElementById('slideCounter');
+                this.dotsHost = document.getElementById('navDots');
+                this.wheelLocked = false;
+                this.listeners = [];
+
+                this.buildDots();
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupButtons();
+                this.showSlide(0, { initial: true });
+            }
+
+            /* Scale the whole 1920×1080 stage with one transform;
+               letterbox / pillarbox as needed, never reflow content */
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            /* Arrow keys, Space, Page Up/Down, Home/End */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.isContentEditable || e.ctrlKey || e.metaKey || e.altKey) return;
+                    switch (e.key) {
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case 'PageDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.next();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prev();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.showSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.showSlide(this.slides.length - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* Swipe left / right on touch screens */
+            setupTouchNav() {
+                let startX = 0;
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const dx = e.changedTouches[0].clientX - startX;
+                    const dy = e.changedTouches[0].clientY - startY;
+                    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                        if (dx < 0) this.next(); else this.prev();
+                    }
+                }, { passive: true });
+            }
+
+            /* Mouse wheel / trackpad, throttled so one flick moves one slide */
+            setupWheelNav() {
+                window.addEventListener('wheel', (e) => {
+                    if (this.wheelLocked || Math.abs(e.deltaY) < 30) return;
+                    this.wheelLocked = true;
+                    if (e.deltaY > 0) this.next(); else this.prev();
+                    setTimeout(() => { this.wheelLocked = false; }, 700);
+                }, { passive: true });
+            }
+
+            setupButtons() {
+                document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+                document.getElementById('nextBtn').addEventListener('click', () => this.next());
+            }
+
+            /* One dot per slide in the control bar */
+            buildDots() {
+                this.dots = this.slides.map((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot';
+                    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.showSlide(i));
+                    this.dotsHost.appendChild(dot);
+                    return dot;
+                });
+            }
+
+            next() { this.showSlide(this.currentSlide + 1); }
+            prev() { this.showSlide(this.currentSlide - 1); }
+
+            /* Register a callback fired after every slide change */
+            onChange(fn) { this.listeners.push(fn); }
+
+            /* .active shows the slide; .visible triggers the .reveal entrance animations */
+            showSlide(index, options = {}) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                const apply = () => {
+                    this.slides.forEach((slide, i) => {
+                        slide.classList.toggle('active', i === this.currentSlide);
+                        slide.classList.toggle('visible', i === this.currentSlide);
+                    });
+                };
+                if (options.initial) {
+                    // Paint the hidden state first so the first slide's stagger plays on load
+                    requestAnimationFrame(() => requestAnimationFrame(apply));
+                } else {
+                    apply();
+                }
+                this.updateChrome();
+                this.listeners.forEach((fn) => fn(this.currentSlide, this.slides[this.currentSlide]));
+            }
+
+            /* Progress bar, counter and dots live outside the stage */
+            updateChrome() {
+                const total = this.slides.length;
+                const pad = (n) => String(n).padStart(2, '0');
+                this.progressFill.style.width = `${((this.currentSlide + 1) / total) * 100}%`;
+                this.counter.textContent = `${pad(this.currentSlide + 1)} / ${pad(total)}`;
+                this.dots.forEach((dot, i) => dot.classList.toggle('active', i === this.currentSlide));
+            }
+        }
+
+        /* ===========================================
+           PARTICLE FIELD (canvas background)
+           Drifting neon dots joined by faint lines.
+           Animates only while its slide is on screen.
+           =========================================== */
+        class ParticleField {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.width = canvas.width;
+                this.height = canvas.height;
+                this.palette = ['0, 255, 204', '255, 0, 170', '77, 163, 255'];
+                this.linkDistance = 170;
+                this.running = false;
+                this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                this.particles = Array.from({ length: 96 }, () => this.spawn());
+                this.tick = this.tick.bind(this);
+                this.draw();
+            }
+
+            spawn() {
+                return {
+                    x: Math.random() * this.width,
+                    y: Math.random() * this.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    r: Math.random() * 2 + 1,
+                    color: this.palette[Math.floor(Math.random() * this.palette.length)],
+                    alpha: Math.random() * 0.5 + 0.4
+                };
+            }
+
+            start() {
+                if (this.running || this.reduceMotion) return;
+                this.running = true;
+                requestAnimationFrame(this.tick);
+            }
+
+            stop() { this.running = false; }
+
+            tick() {
+                if (!this.running) return;
+                this.step();
+                this.draw();
+                requestAnimationFrame(this.tick);
+            }
+
+            step() {
+                for (const p of this.particles) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0 || p.x > this.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > this.height) p.vy *= -1;
+                }
+            }
+
+            draw() {
+                const { ctx, particles } = this;
+                ctx.clearRect(0, 0, this.width, this.height);
+
+                // Faint links between nearby particles
+                ctx.lineWidth = 1;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const a = particles[i];
+                        const b = particles[j];
+                        const d = Math.hypot(a.x - b.x, a.y - b.y);
+                        if (d < this.linkDistance) {
+                            ctx.strokeStyle = `rgba(${a.color}, ${(1 - d / this.linkDistance) * 0.22})`;
+                            ctx.beginPath();
+                            ctx.moveTo(a.x, a.y);
+                            ctx.lineTo(b.x, b.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // Glowing dots
+                for (const p of particles) {
+                    ctx.shadowColor = `rgba(${p.color}, 0.9)`;
+                    ctx.shadowBlur = 14;
+                    ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITING
+           Press E or hover the top-left corner, then click any text.
+           Auto-saves to localStorage; Ctrl+S downloads an edited copy.
+           =========================================== */
+        class Editor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'edge-inference-at-scale:v1';
+                // Leaf text elements only, so editable regions never nest
+                this.selector = [
+                    '.slide h1', '.slide h2', '.slide h3', '.slide p', '.slide td', '.slide th',
+                    '.slide blockquote', '.eyebrow', '.label', '.chip', '.stat-num', '.metric-num',
+                    '.metric-label', '.big', '.who', '.where', '.when', '.speaker-name',
+                    '.speaker-role', '.bullets li', '.contact li'
+                ].join(', ');
+                this.toggleBtn = document.getElementById('editToggle');
+                this.toast = document.getElementById('editToast');
+                this.toastTimer = null;
+                this.autosave = this.debounce(() => this.save(), 600);
+
+                this.restore();
+                document.addEventListener('input', (e) => {
+                    if (this.isActive && e.target.isContentEditable) this.autosave();
+                });
+            }
+
+            get editables() {
+                return Array.from(document.querySelectorAll(this.selector));
+            }
+
+            toggleEditMode() {
+                if (this.isActive) this.disable(); else this.enable();
+            }
+
+            enable() {
+                this.isActive = true;
+                document.body.classList.add('is-editing');
+                this.toggleBtn.classList.add('show', 'active');
+                this.editables.forEach((el) => {
+                    el.setAttribute('contenteditable', 'true');
+                    el.setAttribute('spellcheck', 'false');
+                });
+                this.notify('Edit mode on: click any text. Ctrl+S saves a copy, E exits.');
+            }
+
+            disable() {
+                this.isActive = false;
+                document.body.classList.remove('is-editing');
+                this.toggleBtn.classList.remove('show', 'active');
+                this.editables.forEach((el) => {
+                    el.removeAttribute('contenteditable');
+                    el.removeAttribute('spellcheck');
+                });
+                this.save();
+                this.notify('Edit mode off. Changes are saved in this browser.');
+            }
+
+            save() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.editables.map((el) => el.innerHTML)));
+                } catch (err) { /* storage unavailable: ignore */ }
+            }
+
+            restore() {
+                try {
+                    const saved = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+                    const items = this.editables;
+                    if (Array.isArray(saved) && saved.length === items.length) {
+                        items.forEach((el, i) => { el.innerHTML = saved[i]; });
+                    }
+                } catch (err) { /* corrupt data: ignore */ }
+            }
+
+            /* Download the current deck as a standalone HTML file */
+            exportHTML() {
+                const wasActive = this.isActive;
+                if (wasActive) this.disable();
+                const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+                link.download = 'edge-inference-at-scale.html';
+                link.click();
+                URL.revokeObjectURL(link.href);
+                if (wasActive) this.enable();
+            }
+
+            notify(message) {
+                this.toast.textContent = message;
+                this.toast.classList.add('show');
+                clearTimeout(this.toastTimer);
+                this.toastTimer = setTimeout(() => this.toast.classList.remove('show'), 2600);
+            }
+
+            debounce(fn, ms) {
+                let timer = null;
+                return (...args) => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn(...args), ms);
+                };
+            }
+        }
+
+        /* ===========================================
+           INIT
+           =========================================== */
+        const presentation = new SlidePresentation();
+        const editor = new Editor();
+
+        // One ParticleField per canvas; each runs only while its slide is showing
+        const fields = Array.from(document.querySelectorAll('canvas.particles')).map((canvas) => ({
+            slide: canvas.closest('.slide'),
+            field: new ParticleField(canvas)
+        }));
+        const syncParticles = (index, slide) => {
+            fields.forEach((entry) => {
+                if (entry.slide === slide) entry.field.start(); else entry.field.stop();
+            });
+        };
+        presentation.onChange(syncParticles);
+        syncParticles(presentation.currentSlide, presentation.slides[presentation.currentSlide]);
+
+        /* --- Edit toggle: click, hotzone hover (400ms grace), hotzone click, E key --- */
+        // 1. Click handler on the toggle button
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 2. Hotzone hover with 400ms grace period
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        // 3. Hotzone direct click
+        hotzone.addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 4. Keyboard shortcuts: E toggles editing (ignored while typing), Ctrl+S saves a copy
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S') && editor.isActive) {
+                e.preventDefault();
+                editor.save();
+                editor.exportHTML();
+            }
+        });
+    </script>
+</body>
+</html>

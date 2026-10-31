@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI는 일터에 얼마나 들어왔나 — 2026 Q3 사내 리서치 결과 공유</title>
+
+    <!-- Fonts: Latin faces first, Hangul faces after them so each script renders from its own font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Caveat:wght@500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700;900&family=Gaegu:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Pin & Paper: yellow legal-pad paper + cobalt ink.
+           Change these to change the whole look.
+           =========================================== */
+        :root {
+            /* Paper surfaces */
+            --paper: #EFE56A;
+            --paper-2: #F5ECA0;
+            --paper-3: #E8D85A;
+            --paper-extra: #FBE6A4;
+            --cream: #F8F1D6;
+            --kraft: #C9A66B;
+
+            /* Ink */
+            --ink: #1F3A8A;
+            --ink-soft: #2D4FB8;
+            --ink-line: #3457C4;
+            --ink-deep: #0E1430;
+
+            /* Accents (red is reserved for the stamp + negative pill) */
+            --red: #C2342B;
+            --olive: #6B7A2E;
+            --orange: #D8702A;
+
+            /* Semantic aliases */
+            --bg-primary: var(--paper);
+            --bg-secondary: var(--cream);
+            --text-primary: var(--ink);
+            --text-secondary: rgba(31, 58, 138, 0.75);
+            --accent: var(--red);
+            --stage-bg: var(--ink-deep);   /* letterbox colour around the 16:9 stage */
+            --slide-bg: var(--paper);
+
+            /* Typography — Latin face first, Hangul fallback second (authored at 1920×1080) */
+            --font-display: 'Space Grotesk', 'Noto Sans KR', 'Helvetica Neue', Arial, sans-serif;
+            --font-body: 'Space Grotesk', 'Noto Sans KR', 'Helvetica Neue', Arial, sans-serif;
+            --font-script: 'Caveat', 'Gaegu', 'Nanum Pen Script', cursive;
+            --font-mono: 'DM Mono', 'Noto Sans KR', ui-monospace, monospace;
+            --title-size: 76px;
+            --subtitle-size: 30px;
+            --body-size: 23px;
+
+            /* Spacing — authored at 1920×1080 stage size */
+            --slide-padding: 64px;
+            --content-gap: 28px;
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT BASE (viewport-base.css, included in full)
+           =========================================== */
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           Include this ENTIRE file in every presentation.
+           Slides are authored at 1920×1080 and scaled as a whole.
+           =========================================== */
+
+        /* 1. Lock the browser viewport */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 2. Full-window deck viewport */
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 3. Fixed 16:9 design canvas.
+           JavaScript sets transform: translate(...) scale(...). */
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+
+        /* 4. Slides stack inside the fixed stage.
+           Content must be laid out at 1920×1080, not reflowed per device. */
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+        }
+
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        /* 5. Keep media inside authored slide bounds */
+        img,
+        video,
+        canvas,
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* 6. Presentation chrome stays outside the slide design system */
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        /* 7. Print one fixed-size slide per page */
+        @media print {
+            html,
+            body {
+                width: 1920px;
+                height: auto;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-viewport {
+                position: static;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-stage {
+                position: static;
+                width: auto;
+                height: auto;
+                transform: none !important;
+                background: none;
+            }
+
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+
+            .slide:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .deck-controls {
+                display: none !important;
+            }
+        }
+
+        /* 8. Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           PAPER SURFACE + GRAIN OVERLAY
+           Two soft radial gradients over the cadmium-yellow base,
+           then a NON-OPTIONAL fractal-noise grain on .slide::before.
+           Hangul needs word-break: keep-all so lines break at spaces only.
+           =========================================== */
+        .slide {
+            color: var(--ink);
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            font-weight: 400;
+            line-height: 1.65;
+            word-break: keep-all;
+            overflow-wrap: break-word;
+            -webkit-font-smoothing: antialiased;
+            background:
+                radial-gradient(120% 90% at 20% 10%, rgba(255, 255, 255, .18), transparent 60%),
+                radial-gradient(140% 100% at 80% 95%, rgba(0, 0, 0, .05), transparent 55%),
+                var(--paper);
+        }
+
+        /* Fractal-noise paper grain: data-URI SVG, baseFrequency 1.4, 2 octaves, multiply blend */
+        .slide::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 80;
+            pointer-events: none;
+            opacity: 0.35;
+            mix-blend-mode: multiply;
+            background-size: 240px 240px;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* Ink variant: flipped colours, grain drops to 0.25 and switches to screen blend */
+        .slide.ink {
+            color: var(--paper);
+            background:
+                radial-gradient(120% 90% at 20% 10%, rgba(52, 87, 196, .30), transparent 60%),
+                radial-gradient(140% 100% at 80% 95%, rgba(0, 0, 0, .35), transparent 55%),
+                var(--ink-deep);
+        }
+        .slide.ink::before {
+            opacity: 0.25;
+            mix-blend-mode: screen;
+        }
+
+        /* ===========================================
+           CHROME: top lockup + footer band (DM Mono for Latin, Noto Sans KR for Hangul)
+           Hangul is mixed-case with light tracking; pure-Latin tags stay uppercase mono.
+           =========================================== */
+        .chrome-top {
+            position: absolute;
+            top: 44px;
+            left: 64px;
+            right: 64px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            line-height: 1;
+            color: var(--ink);
+            opacity: 0.78;
+        }
+        .chrome-top .brand { display: flex; align-items: center; gap: 12px; }
+        .chrome-top .brand svg { width: 34px; height: 17px; flex: none; }
+        .chrome-top .meta { display: flex; align-items: center; gap: 28px; }
+
+        .chrome-foot {
+            position: absolute;
+            left: 64px;
+            right: 64px;
+            bottom: 36px;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            line-height: 1;
+            color: var(--ink);
+            opacity: 0.65;
+        }
+        .slide.ink .chrome-top,
+        .slide.ink .chrome-foot { color: var(--paper); }
+
+        /* ===========================================
+           ANIMATIONS
+           Trigger via .visible class on the active slide.
+           Rotation lives in --rot so the reveal transform never erases a card's tilt.
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px) rotate(var(--rot, 0deg));
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0) rotate(var(--rot, 0deg));
+        }
+
+        /* Stagger children for sequential reveal */
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; }
+        .reveal:nth-child(6) { transition-delay: 0.6s; }
+        .reveal:nth-child(7) { transition-delay: 0.7s; }
+
+        /* Stamp lands with a small "thud": scales down into place */
+        .reveal-stamp {
+            opacity: 0;
+            transform: scale(1.5) rotate(var(--rot, -4deg));
+            transition: opacity 0.35s ease-out 0.7s,
+                        transform 0.5s var(--ease-out-expo) 0.7s;
+        }
+        .slide.visible .reveal-stamp {
+            opacity: 1;
+            transform: scale(1) rotate(var(--rot, -4deg));
+        }
+
+        /* Tilt helpers: cards 0.6–1.5deg, handwritten notes -1.5 to -3deg, stamp -4deg */
+        .r1 { --rot: 0.6deg; }
+        .r2 { --rot: 0.9deg; }
+        .r3 { --rot: 1.2deg; }
+        .r4 { --rot: 1.5deg; }
+        .rn1 { --rot: -0.6deg; }
+        .rn2 { --rot: -0.9deg; }
+        .rn3 { --rot: -1.2deg; }
+        .s1 { --rot: -1.5deg; }
+        .s2 { --rot: -2deg; }
+        .s3 { --rot: -3deg; }
+        .s4 { --rot: 2deg; }
+
+        /* ===========================================
+           TYPOGRAPHY
+           Printed headline (Space Grotesk + Noto Sans KR), handwritten voice
+           (Caveat + Gaegu), archival tag (DM Mono + Noto Sans KR).
+           Hangul: tracking -0.02em max, line-height 1.15–1.2 display / 1.6+ body.
+           =========================================== */
+        .slide h1, .slide h2, .slide h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: inherit;
+        }
+        .display { font-size: 160px; line-height: 1.16; letter-spacing: -0.03em; }
+        .title   { font-size: var(--title-size); line-height: 1.15; letter-spacing: -0.02em; }
+        .title-md { font-size: 64px; line-height: 1.18; letter-spacing: -0.02em; }
+        .title-cta { font-size: 104px; line-height: 1.12; letter-spacing: -0.03em; }
+        .h3      { font-size: 34px; line-height: 1.25; letter-spacing: -0.01em; }
+        .h3-sm   { font-size: 28px; line-height: 1.3; letter-spacing: -0.01em; }
+        .body    { font-size: 22px; line-height: 1.65; }
+        .body-sm { font-size: 20px; line-height: 1.6; }
+        .body-xs { font-size: 19px; line-height: 1.5; }
+        .lead    { font-size: 23px; line-height: 1.6; opacity: 0.88; max-width: 720px; }
+        .kicker {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            line-height: 1;
+            opacity: 0.75;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            line-height: 1.2;
+            opacity: 0.75;
+        }
+        .tag-dashed {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 17px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            line-height: 1;
+            padding: 11px 18px;
+            border: 1.5px dashed rgba(31, 58, 138, 0.55);
+            border-radius: 4px;
+        }
+        .mono { font-family: var(--font-mono); font-weight: 500; }
+
+        /* Handwritten voice — always ink on paper, paper on ink */
+        .scribble {
+            font-family: var(--font-script);
+            font-weight: 600;
+            font-size: 36px;
+            line-height: 1.15;
+            letter-spacing: 0;
+            color: var(--ink);
+        }
+        .scribble.sm { font-size: 32px; }
+        .scribble.lg { font-size: 44px; }
+        .scribble .underline { border-bottom: 2px solid var(--ink); padding-bottom: 1px; }
+        .slide.ink .scribble { color: var(--paper); }
+        .slide.ink .scribble .underline { border-bottom-color: var(--paper); }
+        .note-abs { position: absolute; z-index: 7; }
+        .scribble { transform-origin: 0 60%; }
+        .scribble:not(.reveal) { transform: rotate(var(--rot, 0deg)); }
+
+        /* Hand-script numerals (the only step-numbering mechanism) */
+        .num {
+            font-family: var(--font-script);
+            font-weight: 700;
+            font-size: 70px;
+            line-height: 0.9;
+            color: var(--ink);
+        }
+        .num.md { font-size: 60px; }
+        .slide.ink .num { color: var(--paper); }
+
+        /* ===========================================
+           CARDS — cream paper, 1.5px ink border, 4px radius, hard offset shadow
+           =========================================== */
+        .card {
+            position: relative;
+            background: var(--cream);
+            border: 1.5px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 5px 6px 0 0 var(--ink);
+            padding: 28px 28px 24px;
+        }
+        .card.alt  { background: var(--paper-2); }
+        .card.alt2 { background: var(--paper-extra); }
+        .card.sm   { box-shadow: 4px 5px 0 0 var(--ink); }
+        .card.lg   { box-shadow: 8px 9px 0 0 var(--ink); }
+        .card .h3 { margin-bottom: 10px; }
+        .card .note { margin-top: 12px; }
+
+        /* Ink-slide card: cobalt fill, paper border, yellow-tinted hard shadow */
+        .card.chart-card {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--paper);
+            box-shadow: 6px 7px 0 0 rgba(239, 229, 106, 0.25);
+        }
+
+        /* Dashed graph-paper separators */
+        .sep { border: 0; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); }
+        .slide.ink .sep { border-top-color: rgba(239, 229, 106, 0.45); }
+
+        /* ===========================================
+           PIN ILLUSTRATIONS — <svg class="pin"><use href="#pin"/></svg>
+           Always rotated off-axis; colour comes from currentColor.
+           =========================================== */
+        .pin {
+            position: absolute;
+            z-index: 6;
+            width: 190px;
+            height: 58px;
+            color: var(--ink);
+            pointer-events: none;
+            transform: rotate(var(--rot, -12deg));
+        }
+        .pin.sm { width: 140px; height: 43px; }
+        .pin.lg { width: 300px; height: 92px; }
+        .pin.xl { width: 520px; height: 159px; }
+        .pin.open { height: 68px; }
+        .pin.open.sm { height: 51px; }
+        .pin.open.lg { height: 108px; }
+        .slide.ink .pin { color: var(--paper); }
+
+        /* ===========================================
+           STAMP — cinnabar rubber stamp, always -4deg (one of two roles for red)
+           =========================================== */
+        .stamp {
+            position: absolute;
+            z-index: 7;
+            display: inline-block;
+            --rot: -4deg;
+            border: 3px solid var(--red);
+            border-radius: 0;
+            color: var(--red);
+            padding: 6px 16px;
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+
+        /* ===========================================
+           PILLS — handwritten letterforms inside a UI pill (intentional mismatch)
+           =========================================== */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+        .pill.yes {
+            background: var(--ink);
+            color: var(--paper);
+            border: 1.5px solid var(--ink);
+            padding: 4px 16px 5px;
+            font-family: var(--font-script);
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .pill.part {
+            background: var(--paper-2);
+            color: var(--ink);
+            border: 1.5px solid var(--ink);
+            padding: 4px 16px 5px;
+            font-family: var(--font-script);
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .pill.no {
+            background: transparent;
+            color: var(--red);
+            border: 1.5px solid var(--red);
+            padding: 6px 15px;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        /* ===========================================
+           COMPARISON TABLE — CSS grid, cream card with ink border + hard shadow
+           =========================================== */
+        .cmp {
+            display: grid;
+            grid-template-columns: 380px repeat(4, 1fr);
+            background: var(--cream);
+            border: 1.5px solid var(--ink);
+            border-radius: 4px;
+            box-shadow: 5px 6px 0 0 var(--ink);
+        }
+        .cmp > div {
+            padding: 14px 20px;
+            font-size: 20px;
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1.5px dashed rgba(31, 58, 138, 0.45);
+            border-right: 1.5px solid rgba(31, 58, 138, 0.5);
+        }
+        .cmp > div:nth-child(5n) { border-right: 0; }
+        .cmp > .last { border-bottom: 0; }
+        .cmp > .th {
+            background: var(--paper-2);
+            border-bottom: 1.5px solid var(--ink);
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 6px;
+        }
+        .cmp > .th:first-child { border-top-left-radius: 3px; }
+        .cmp > .th:nth-child(5) { border-top-right-radius: 3px; }
+        .cmp .th .h3-sm { white-space: nowrap; }
+        .cmp .rowhead { font-weight: 700; font-size: 24px; letter-spacing: -0.01em; }
+        .cmp .rowhead small { display: block; font-weight: 400; font-size: 17px; opacity: 0.7; letter-spacing: 0; }
+
+        /* ===========================================
+           STAT — oversized numerals with Caveat <small> unit suffixes
+           =========================================== */
+        .stat-num {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 168px;
+            line-height: 0.85;
+            letter-spacing: -0.04em;
+            color: var(--ink);
+        }
+        .stat-num small {
+            font-family: var(--font-script);
+            font-size: 60px;
+            font-weight: 700;
+            letter-spacing: 0;
+            margin-left: 6px;
+        }
+
+        /* ===========================================
+           QUOTE — oversized Caveat quote glyph used as composition
+           =========================================== */
+        .quote-glyph {
+            font-family: var(--font-script);
+            font-weight: 700;
+            font-size: 360px;
+            line-height: 0.8;
+            color: var(--ink);
+        }
+        .quote-text {
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 50px;
+            line-height: 1.45;
+            letter-spacing: -0.02em;
+        }
+
+        /* ===========================================
+           PROGRESS BARS (CSS) used on the barrier slide
+           =========================================== */
+        .track {
+            height: 24px;
+            border: 1.5px solid var(--ink);
+            border-radius: 2px;
+            background: rgba(248, 241, 214, 0.6);
+            position: relative;
+        }
+        .track > i {
+            display: block;
+            height: 100%;
+            width: var(--v, 50%);
+            background: var(--ink);
+        }
+
+        /* ===========================================
+           DECK CHROME OUTSIDE THE STAGE: progress bar + page counter
+           =========================================== */
+        .deck-progress {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 4px;
+            width: 100%;
+            transform-origin: 0 0;
+            transform: scaleX(0);
+            background: var(--paper);
+            z-index: 1001;
+            transition: transform 0.4s var(--ease-out-expo);
+        }
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(14, 20, 48, 0.72);
+            color: var(--paper);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            opacity: 0.35;
+            transition: opacity 0.3s ease;
+        }
+        .deck-controls:hover { opacity: 1; }
+        .deck-controls button {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 2px 8px;
+        }
+
+        /* ===========================================
+           INLINE EDITING UI (hotzone + toggle, JS-driven visibility)
+           Do NOT use the CSS ~ sibling selector: pointer-events:none breaks the hover chain.
+           =========================================== */
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            border: 1.5px solid var(--ink);
+            border-radius: 4px;
+            background: var(--cream);
+            box-shadow: 3px 4px 0 0 var(--ink);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+        }
+        .edit-toggle.show,
+        .edit-toggle.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .edit-toggle.active { background: var(--paper); }
+        .edit-banner {
+            position: fixed;
+            top: 16px;
+            left: 72px;
+            padding: 12px 18px;
+            border: 1.5px solid var(--ink);
+            border-radius: 4px;
+            background: var(--cream);
+            color: var(--ink);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 0.04em;
+            box-shadow: 3px 4px 0 0 var(--ink);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+        }
+        .edit-banner.show { opacity: 1; }
+        body.editing [contenteditable="true"] { cursor: text; }
+        body.editing [contenteditable="true"]:hover { outline: 2px dashed rgba(31, 58, 138, 0.55); outline-offset: 4px; }
+        body.editing [contenteditable="true"]:focus { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+        /* ===========================================
+           LAYOUT SHELL — content area sits between the 44px top chrome
+           and the 36px footer chrome (pad-top 106, pad-bottom 104)
+           =========================================== */
+        .slide-content {
+            position: absolute;
+            left: 64px;
+            right: 64px;
+            top: 106px;
+            bottom: 104px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .title-row {
+            flex: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 48px;
+        }
+        .title-block { display: flex; flex-direction: column; gap: 14px; }
+        .region { flex: 1; min-height: 0; position: relative; }
+
+        /* Key / value rows with dashed dividers (cover info card, notes) */
+        .kv {
+            display: grid;
+            grid-template-columns: 118px 1fr;
+            column-gap: 14px;
+            align-items: baseline;
+            padding: 12px 0;
+            border-top: 1.5px dashed rgba(31, 58, 138, 0.45);
+        }
+        .kv:first-of-type { border-top: 0; }
+        .kv .k { font-family: var(--font-mono); font-size: 16px; letter-spacing: 0.04em; opacity: 0.7; }
+        .kv .v { font-size: 22px; line-height: 1.4; font-weight: 500; }
+
+        /* ===========================================
+           SLIDE 1 — COVER
+           =========================================== */
+        .cv-eyebrow { position: absolute; left: 64px; top: 150px; z-index: 3; background: rgba(248, 241, 214, 0.55); }
+        .cv-title   { position: absolute; left: 64px; top: 208px; width: 1230px; z-index: 3; }
+        .cv-sub     { position: absolute; left: 64px; top: 612px; width: 1060px; z-index: 3; font-size: 30px; line-height: 1.6; font-weight: 500; }
+        .cv-note    { position: absolute; left: 64px; top: 750px; width: 720px; }
+        .cv-chips   { position: absolute; left: 64px; top: 884px; display: flex; gap: 16px; z-index: 3; }
+        .cv-doc     { position: absolute; left: 1330px; top: 176px; width: 526px; padding: 46px 30px 22px; z-index: 4; }
+        .cv-take    { position: absolute; left: 1330px; top: 668px; width: 526px; padding: 26px 28px 22px; z-index: 4; }
+        .cv-take .body { margin-top: 8px; font-weight: 500; }
+
+        /* ===========================================
+           SLIDE 2 — AGENDA
+           =========================================== */
+        .ag-grid { display: grid; grid-template-columns: 1066px 1fr; column-gap: 60px; height: 100%; }
+        .ag-card { display: flex; flex-direction: column; padding: 14px 34px 10px; }
+        .ag-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 96px 1fr 150px;
+            align-items: center;
+            border-top: 1.5px dashed rgba(31, 58, 138, 0.45);
+        }
+        .ag-row:first-of-type { border-top: 0; }
+        .ag-row .t { font-size: 36px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+        .ag-row .d { font-size: 21px; line-height: 1.5; opacity: 0.85; margin-top: 2px; }
+        .ag-row .pg { font-family: var(--font-mono); font-size: 17px; text-align: right; opacity: 0.7; }
+        .ag-side { display: flex; flex-direction: column; gap: 34px; padding-top: 8px; }
+        .ag-sum { padding: 34px 30px 22px; }
+        .ag-sum .body { font-weight: 500; }
+        .ag-legend { padding: 28px 30px 18px; }
+        .ag-legend .lg-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; column-gap: 16px; padding: 9px 0; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); }
+        .ag-legend .lg-row:first-of-type { border-top: 0; }
+
+        /* ===========================================
+           SLIDE 3 — METHOD CARDS (3 x 2)
+           =========================================== */
+        .mt-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 32px; height: 100%; padding: 0 6px 8px 0; }
+        .mt-card { padding: 32px 28px 22px; display: flex; flex-direction: column; }
+        .mt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .mt-chip { font-family: var(--font-mono); font-size: 16px; font-weight: 500; letter-spacing: 0.04em; padding: 5px 12px; border: 1.5px solid var(--ink); border-radius: 999px; background: var(--paper-2); }
+        .mt-card .body-sm { flex: 1; }
+
+        /* ===========================================
+           SLIDE 4 — STAT CARDS
+           =========================================== */
+        .st-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; padding-right: 6px; }
+        .st-card { padding: 34px 28px 24px; min-height: 578px; display: flex; flex-direction: column; }
+        .st-label { font-family: var(--font-mono); font-size: 17px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; margin-bottom: 18px; }
+        .st-card .stat-num { margin-bottom: 16px; }
+        .st-card .body { flex: 1; }
+        .st-foot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 24px; padding-right: 6px; }
+        .st-foot p { font-family: var(--font-mono); font-size: 16px; line-height: 1.55; letter-spacing: 0.02em; padding-top: 10px; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); opacity: 0.78; }
+
+        /* ===========================================
+           SLIDE 5 — INK CHART SLIDE
+           =========================================== */
+        .ch-grid { display: grid; grid-template-columns: 1200px 1fr; column-gap: 44px; height: 100%; }
+        .ch-card { padding: 26px 32px 18px; align-self: start; }
+        .ch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .ch-head .h3 { margin: 0; }
+        .ch-svg { display: block; width: 100%; height: auto; aspect-ratio: 1136 / 560; }
+        .ch-svg text { font-family: var(--font-body); fill: var(--paper); }
+        .ch-svg .v   { font-weight: 700; font-size: 34px; letter-spacing: -0.02em; text-anchor: middle; }
+        .ch-svg .c   { font-weight: 700; font-size: 25px; text-anchor: middle; }
+        .ch-svg .n   { font-family: var(--font-mono); font-size: 15px; text-anchor: middle; opacity: 0.7; }
+        .ch-svg .y   { font-family: var(--font-mono); font-size: 15px; text-anchor: end; opacity: 0.7; }
+        .ch-svg .sc  { font-family: var(--font-script); font-weight: 600; font-size: 36px; }
+        .ch-svg .grid { stroke: rgba(239, 229, 106, 0.28); stroke-width: 1.5; stroke-dasharray: 6 8; }
+        .ch-svg .axis { stroke: var(--paper); stroke-width: 2; }
+        .ch-svg .avg  { stroke: var(--cream); stroke-width: 2.5; stroke-dasharray: 14 8; }
+        .ch-svg .bar  { fill: var(--paper); stroke: var(--paper); stroke-width: 2; }
+        .ch-svg .bar.lo { fill: rgba(239, 229, 106, 0.42); }
+        .ch-svg .bar-sh { fill: rgba(239, 229, 106, 0.22); }
+        .ch-svg .arrow { fill: none; stroke: var(--paper); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .mini3 { display: grid; grid-template-columns: repeat(3, 1fr); margin: 8px 0 12px; }
+        .mini3 > div { padding: 2px 0 2px 16px; border-left: 1.5px dashed rgba(239, 229, 106, 0.45); }
+        .mini3 > div:first-child { border-left: 0; padding-left: 0; }
+        .mini3 b { display: block; font-family: var(--font-display); font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+        .mini3 span { font-size: 19px; opacity: 0.85; }
+        .ch-side { display: flex; flex-direction: column; gap: 24px; padding-right: 8px; }
+        .ch-side .card { padding: 26px 26px 18px; }
+        .ch-side .scribble.lg { font-size: 40px; }
+        .ch-side .body-xs { line-height: 1.45; }
+        .ch-side .card.chart-card { box-shadow: 6px 7px 0 0 rgba(239, 229, 106, 0.25); }
+        .rank-list { list-style: none; margin-top: 8px; }
+        .rank-list li { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-top: 1.5px dashed rgba(239, 229, 106, 0.45); font-size: 22px; }
+        .rank-list li:first-child { border-top: 0; }
+        .rank-list b { font-family: var(--font-display); font-size: 28px; letter-spacing: -0.02em; }
+
+        /* ===========================================
+           SLIDE 6 — BARRIERS (CSS progress bars + interview quotes)
+           =========================================== */
+        .bar-grid { display: grid; grid-template-columns: 1090px 1fr; column-gap: 46px; height: 100%; }
+        .br-card { padding: 22px 34px 14px; display: flex; flex-direction: column; margin-bottom: 8px; }
+        .br-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 72px 1fr 340px 92px;
+            column-gap: 20px;
+            align-items: center;
+            border-top: 1.5px dashed rgba(31, 58, 138, 0.45);
+        }
+        .br-row:first-of-type { border-top: 0; }
+        .br-label { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+        .br-desc  { font-size: 20px; line-height: 1.5; opacity: 0.85; }
+        .br-val   { font-family: var(--font-display); font-weight: 700; font-size: 46px; letter-spacing: -0.03em; text-align: right; line-height: 1; }
+        .br-side  { display: flex; flex-direction: column; gap: 30px; padding: 6px 8px 0 0; }
+        .br-side .card { padding: 32px 28px 20px; }
+        .qlist { list-style: none; }
+        .qlist li { padding: 11px 0; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); font-size: 21px; line-height: 1.5; }
+        .qlist li:first-child { border-top: 0; padding-top: 2px; }
+        .qlist cite { display: inline; font-style: normal; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.04em; opacity: 0.7; margin-left: 8px; white-space: nowrap; }
+        .wins { list-style: none; margin-top: 4px; }
+        .wins li { display: grid; grid-template-columns: 54px 1fr; align-items: baseline; padding: 6px 0; font-size: 21px; line-height: 1.45; }
+
+        /* ===========================================
+           SLIDE 7 — COMPARISON TABLE (CSS grid) + legend
+           =========================================== */
+        .cmp .cell-note { font-size: 19px; line-height: 1.4; }
+        .cmp .csat { font-family: var(--font-display); font-weight: 700; font-size: 44px; letter-spacing: -0.03em; line-height: 1; }
+        .cmp .csat small { font-family: var(--font-script); font-size: 30px; font-weight: 700; letter-spacing: 0; margin-left: 4px; }
+        .tb-wrap { padding-right: 6px; }
+        .tb-foot { display: grid; grid-template-columns: 860px 1fr; column-gap: 48px; margin-top: 30px; align-items: center; padding-right: 6px; }
+        .tb-legend { display: flex; align-items: center; gap: 30px; padding: 16px 26px; }
+        .tb-legend .l { display: flex; align-items: center; gap: 10px; font-size: 19px; line-height: 1.3; }
+
+        /* ===========================================
+           SLIDE 8 — QUOTE
+           =========================================== */
+        .qt-grid { display: grid; grid-template-columns: 1266px 1fr; column-gap: 48px; }
+        .qt-main { padding: 40px 64px 28px 40px; display: grid; grid-template-columns: 230px 1fr; column-gap: 10px; align-items: start; min-height: 470px; }
+        .qt-main .quote-glyph { margin-top: -6px; }
+        .qt-body .attr { display: flex; align-items: center; gap: 16px; margin-top: 22px; font-size: 22px; font-weight: 500; }
+        .qt-body .analysis { margin-top: 18px; padding-top: 14px; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); font-size: 20px; line-height: 1.6; }
+        .qt-side { display: flex; flex-direction: column; gap: 34px; padding: 8px 8px 0 0; }
+        .qt-small { padding: 34px 26px 22px; }
+        .qt-small q { quotes: none; display: block; font-size: 26px; line-height: 1.5; font-weight: 500; letter-spacing: -0.01em; }
+        .qt-small cite { display: block; font-style: normal; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.04em; opacity: 0.7; margin-top: 12px; }
+        .qt-strip { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 34px; margin-right: 8px; border: 1.5px dashed rgba(31, 58, 138, 0.55); border-radius: 4px; }
+        .qt-strip > div { padding: 16px 26px; display: grid; grid-template-columns: 56px 1fr; column-gap: 14px; align-items: center; }
+        .qt-strip > div + div { border-left: 1.5px dashed rgba(31, 58, 138, 0.45); }
+        .qt-strip .h3-sm { margin-bottom: 2px; }
+
+        /* ===========================================
+           SLIDE 9 — ROADMAP (timeline + 4 process cards + KPI strip)
+           =========================================== */
+        .tl { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 32px; position: relative; height: 62px; padding-right: 6px; }
+        .tl::before { content: ""; position: absolute; left: 0; right: 6px; top: 40px; border-top: 2px dashed rgba(31, 58, 138, 0.6); }
+        .tl > div { position: relative; font-family: var(--font-mono); font-size: 17px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; padding-left: 4px; }
+        .tl > div::after { content: ""; position: absolute; left: 4px; top: 32px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 4px var(--paper); }
+        .rd-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; padding-right: 6px; }
+        .rd-card { padding: 34px 26px 22px; display: flex; flex-direction: column; min-height: 436px; }
+        .rd-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .rd-card .body-sm { flex: 1; }
+        .rd-meta { margin-top: 14px; padding-top: 10px; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); font-size: 19px; line-height: 1.6; }
+        .rd-meta b { font-family: var(--font-mono); font-size: 15px; font-weight: 500; opacity: 0.7; margin-right: 8px; letter-spacing: 0.04em; }
+        .kpi { display: grid; grid-template-columns: repeat(3, 1fr); margin: 28px 6px 0 0; padding: 0; }
+        .kpi > div { padding: 16px 28px 14px; }
+        .kpi > div + div { border-left: 1.5px dashed rgba(31, 58, 138, 0.45); }
+        .kpi .ft { font-family: var(--font-display); font-weight: 700; font-size: 38px; letter-spacing: -0.02em; line-height: 1.2; }
+        .kpi .ft small { font-family: var(--font-script); font-size: 30px; letter-spacing: 0; margin-left: 4px; }
+
+        /* ===========================================
+           SLIDE 10 — CLOSING / DECISIONS
+           =========================================== */
+        .cl-grid { display: grid; grid-template-columns: 1066px 1fr; column-gap: 60px; height: 100%; }
+        .cl-card { padding: 14px 38px 10px; display: flex; flex-direction: column; margin-bottom: 8px; }
+        .cl-row { flex: 1; display: grid; grid-template-columns: 96px 1fr 240px; align-items: center; border-top: 1.5px dashed rgba(31, 58, 138, 0.45); }
+        .cl-row:first-of-type { border-top: 0; }
+        .cl-row .t { font-size: 38px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; }
+        .cl-row .d { font-size: 21px; line-height: 1.5; opacity: 0.85; margin-top: 2px; }
+        .cl-row .who { font-family: var(--font-mono); font-size: 17px; line-height: 1.6; text-align: right; }
+        .cl-side { display: flex; flex-direction: column; gap: 34px; padding-top: 8px; }
+        .cl-contact { padding: 40px 30px 22px; }
+        .cl-thanks { padding: 26px 30px 20px; }
+    </style>
+</head>
+<body>
+    <!-- ===========================================
+         SVG SYMBOL DEFINITIONS
+         Hand-drawn safety pins + brand mark. Reuse with <use href="#pin">.
+         Colour comes from currentColor; every placed pin is rotated off-axis.
+         =========================================== -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs>
+            <!-- Closed safety pin: coiled spring on the right, shaft sweeping left, oval clasp cap on the left -->
+            <symbol id="pin" viewBox="0 0 360 110">
+                <g fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M296 34 C 240 27, 150 23, 90 31"/>
+                    <path d="M296 78 C 240 86, 150 90, 90 82"/>
+                    <path d="M296 34 C 326 28, 349 44, 344 60 C 339 76, 316 84, 296 78"/>
+                    <path d="M296 34 C 314 40, 322 54, 314 63 C 308 70, 298 68, 298 61"/>
+                    <path d="M92 20 C 50 17, 24 33, 24 55 C 24 78, 50 94, 92 91 Z"/>
+                    <path d="M86 40 C 62 40, 48 46, 48 55 C 48 65, 62 71, 86 71"/>
+                </g>
+            </symbol>
+            <!-- Open safety pin: clasp lifted, sharp point exposed pointing left -->
+            <symbol id="pin-open" viewBox="0 0 360 130">
+                <g fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M296 96 C 240 104, 150 108, 90 101"/>
+                    <path d="M296 54 C 230 46, 120 30, 32 12"/>
+                    <path d="M296 54 C 326 48, 349 64, 344 80 C 339 96, 316 102, 296 96"/>
+                    <path d="M296 54 C 314 60, 322 74, 314 83 C 308 90, 298 88, 298 81"/>
+                    <path d="M92 86 C 52 83, 26 94, 26 106 C 26 118, 52 124, 92 121 Z"/>
+                    <path d="M84 96 C 62 96, 50 100, 50 106 C 50 112, 62 116, 84 116"/>
+                </g>
+            </symbol>
+            <!-- Brand mark for the top-chrome lockup: circle on the right, arrow shaft pointing left -->
+            <symbol id="mark" viewBox="0 0 32 16">
+                <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="24" cy="8" r="5.5"/>
+                    <path d="M18 8 H3 M7 4 L3 8 L7 12"/>
+                </g>
+            </symbol>
+        </defs>
+    </svg>
+
+    <!-- ===========================================
+         DECK VIEWPORT + FIXED 1920×1080 STAGE
+         =========================================== -->
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- === SLIDE 1: COVER === -->
+            <section class="slide cover active" aria-label="표지">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Vol. 07</span><span>2026.10</span></div>
+                </header>
+
+                <span class="cv-eyebrow tag-dashed reveal">2026 Q3 · 사내 리서치 결과 공유</span>
+                <h1 class="cv-title display reveal">AI는 일터에<br>얼마나 들어왔나</h1>
+                <p class="cv-sub reveal">임직원 1,284명 설문 · 심층 인터뷰 32건 · 90일 사용 로그로 읽은 AI 업무 도구 도입 실태와 확산 제안</p>
+                <p class="cv-note scribble lg s2 reveal">출근길에 가볍게 읽어주세요 :)</p>
+                <div class="cv-chips reveal">
+                    <span class="tag-dashed">읽는 시간 약 12분</span>
+                    <span class="tag-dashed">슬라이드 10장</span>
+                    <span class="tag-dashed">데이터 기준일 2026.09.30</span>
+                </div>
+
+                <aside class="card cv-doc r3 reveal">
+                    <svg class="pin" style="left:170px; top:-26px; --rot:-9deg" aria-hidden="true"><use href="#pin"/></svg>
+                    <h3 class="h3">문서 정보</h3>
+                    <div class="kv"><span class="k">작성</span><span class="v">리서치랩 (UX·데이터 팀)</span></div>
+                    <div class="kv"><span class="k">공유 범위</span><span class="v">전 직원 · 사내 한정</span></div>
+                    <div class="kv"><span class="k">데이터 기준</span><span class="v">2026.07.01 – 09.30</span></div>
+                    <div class="kv"><span class="k">표본</span><span class="v">n = 1,284 (응답률 71%)</span></div>
+                    <div class="kv"><span class="k">버전</span><span class="v">v1.2 · 2026.10.12</span></div>
+                </aside>
+                <span class="stamp reveal-stamp" style="left:1500px; top:548px">내부용 · INTERNAL</span>
+
+                <aside class="card alt cv-take rn1 reveal">
+                    <svg class="pin open sm" style="left:392px; top:-22px; --rot:10deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                    <span class="tag">한 줄 결론</span>
+                    <p class="body">도입은 빠르게 늘었지만, 부서 간 격차와 보안 불안이 함께 커졌다.</p>
+                    <p class="scribble sm s1 note">도구보다 <span class="underline">규칙이 먼저!</span></p>
+                </aside>
+
+                <svg class="pin lg" style="left:820px; top:796px; --rot:14deg" aria-hidden="true"><use href="#pin"/></svg>
+
+                <footer class="chrome-foot"><span>리서치랩 · 사내 한정 공유 자료</span><span>01 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 2: AGENDA === -->
+            <section class="slide" aria-label="목차">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Agenda · 목차</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">AGENDA · 목차</span>
+                            <h2 class="title reveal">오늘 다룰 내용</h2>
+                        </div>
+                        <p class="lead reveal">10장짜리 짧은 리포트입니다. 결론이 먼저 궁금하다면 오른쪽 ‘한 줄 요약’부터 읽어도 좋아요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="ag-grid">
+                            <div class="card ag-card reveal">
+                                <svg class="pin" style="left:60px; top:-20px; --rot:-8deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="ag-row">
+                                    <span class="num">1</span>
+                                    <div><div class="t">조사 개요와 방법</div><div class="d">설문 1,284명 · 인터뷰 32건 · 로그 90일, 그리고 ‘도입률’의 정의</div></div>
+                                    <span class="pg">p.03</span>
+                                </div>
+                                <div class="ag-row">
+                                    <span class="num">2</span>
+                                    <div><div class="t">핵심 수치 3가지</div><div class="d">도입률 42% · 주당 절감 3.4시간 · 파워유저 격차 2.3배</div></div>
+                                    <span class="pg">p.04</span>
+                                </div>
+                                <div class="ag-row">
+                                    <span class="num">3</span>
+                                    <div><div class="t">부서별 도입 격차</div><div class="d">개발 71% 대 재무·법무 14%, 57%p 차이는 어디서 오나</div></div>
+                                    <span class="pg">p.05</span>
+                                </div>
+                                <div class="ag-row">
+                                    <span class="num">4</span>
+                                    <div><div class="t">장벽 · 도구 비교 · 현장의 목소리</div><div class="d">무엇이 막고, 어떤 도구가 맞고, 사람들은 뭐라고 말하나</div></div>
+                                    <span class="pg">p.06–08</span>
+                                </div>
+                                <div class="ag-row">
+                                    <span class="num">5</span>
+                                    <div><div class="t">제안과 결정 사항</div><div class="d">4단계 확산 로드맵과 이번 달 안에 정해야 할 3가지</div></div>
+                                    <span class="pg">p.09–10</span>
+                                </div>
+                            </div>
+
+                            <div class="ag-side">
+                                <div class="card alt2 ag-sum r3 reveal">
+                                    <svg class="pin sm" style="left:44px; top:-18px; --rot:-12deg" aria-hidden="true"><use href="#pin"/></svg>
+                                    <span class="stamp reveal-stamp" style="right:18px; top:-26px">검토 완료 · REVIEWED</span>
+                                    <span class="kicker">한 줄 요약 · TL;DR</span>
+                                    <p class="body" style="margin-top:12px">AI 도입률은 1년 만에 18%에서 42%로 두 배 넘게 늘었지만, 부서 간 격차(71% 대 14%)와 보안 불안이 확산의 병목입니다. 도구를 더 사기 전에 가이드와 교육부터 정리해야 합니다.</p>
+                                    <p class="scribble s2 note">결론부터 말하면, <span class="underline">규칙이 먼저!</span></p>
+                                </div>
+
+                                <div class="card ag-legend reveal">
+                                    <h3 class="h3-sm" style="margin-bottom:8px">표시 읽는 법</h3>
+                                    <div class="lg-row"><span class="pill yes">충족</span><span class="body-sm">요구 사항을 충분히 만족</span></div>
+                                    <div class="lg-row"><span class="pill part">부분</span><span class="body-sm">조건부 또는 일부만 충족</span></div>
+                                    <div class="lg-row"><span class="pill no">미흡</span><span class="body-sm">현재 기준에 못 미침</span></div>
+                                    <hr class="sep" style="margin-top:8px">
+                                    <p class="tag" style="margin-top:10px">출처 · 리서치랩 2026 Q3 설문 · 인터뷰 · 로그</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 리서치랩 조사 설계서 v2</span><span>02 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 3: METHOD (3 x 2 notecards) === -->
+            <section class="slide" aria-label="조사 개요">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Method · 조사 개요</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">METHOD · 조사 개요</span>
+                            <h2 class="title reveal">조사 설계와 표본</h2>
+                        </div>
+                        <p class="lead reveal">세 가지 데이터를 교차 검증해 설문의 자기보고 편향을 줄였습니다. 이후의 숫자는 모두 이 설계 위에서 읽어주세요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="mt-grid">
+                            <article class="card mt-card reveal">
+                                <svg class="pin" style="left:36px; top:-22px; --rot:-10deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="mt-top"><span class="tag">01 · SURVEY</span><span class="mt-chip">n = 1,284</span></div>
+                                <h3 class="h3">전 직원 온라인 설문</h3>
+                                <p class="body-sm">2026.07.15–08.04 진행, 전 직원 1,806명 중 1,284명이 응답했습니다(71%). 부서·직급으로 층화했고 표본 오차는 ±2.7%p입니다.</p>
+                                <p class="scribble sm s1 note">응답률 71%, 목표치 60% 초과!</p>
+                            </article>
+
+                            <article class="card alt mt-card r2 reveal">
+                                <div class="mt-top"><span class="tag">02 · INTERVIEW</span><span class="mt-chip">n = 32 · 60분</span></div>
+                                <h3 class="h3">6개 부서 32명 인터뷰</h3>
+                                <p class="body-sm">도입 초기·정체·중단 사용자를 고루 섭외해 이유를 비교했습니다. 녹취는 전부 전사한 뒤 두 명이 따로 코딩했어요.</p>
+                                <p class="scribble sm s2 note">중단 사용자 8명의 이야기가 특히 값졌다</p>
+                            </article>
+
+                            <article class="card mt-card reveal">
+                                <svg class="pin open sm" style="left:300px; top:-20px; --rot:12deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                                <div class="mt-top"><span class="tag">03 · LOG</span><span class="mt-chip">90일 · r = 0.64</span></div>
+                                <h3 class="h3">SSO 접속 로그 분석</h3>
+                                <p class="body-sm">7~9월 90일치 로그를 익명화해 분석했습니다. 설문 응답과 실제 사용량의 상관은 r = 0.64로 꽤 높았어요.</p>
+                                <p class="scribble sm s1 note">자기보고와 로그, 생각보다 일치</p>
+                            </article>
+
+                            <article class="card alt mt-card reveal">
+                                <div class="mt-top"><span class="tag">04 · DEFINITION</span><span class="mt-chip">주 1회+ / 4주</span></div>
+                                <h3 class="h3">‘도입자’는 누구인가</h3>
+                                <p class="body-sm">최근 4주 안에 업무 목적으로 AI 도구를 주 1회 이상 쓴 사람입니다. 일회성 체험과 개인 용도는 제외했습니다.</p>
+                                <p class="scribble sm s3 note">정의가 바뀌면 숫자도 <span class="underline">바뀝니다</span></p>
+                            </article>
+
+                            <article class="card mt-card reveal">
+                                <svg class="pin" style="left:380px; top:-24px; --rot:8deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="mt-top"><span class="tag">05 · ANALYSIS</span><span class="mt-chip">p &lt; 0.01</span></div>
+                                <h3 class="h3">검정과 신뢰구간</h3>
+                                <p class="body-sm">부서 간 차이는 카이제곱 검정으로, 절감 시간은 부트스트랩 95% 신뢰구간으로 확인했습니다.</p>
+                                <p class="scribble sm s2 note">통계는 꼼꼼하게, 해석은 보수적으로</p>
+                            </article>
+
+                            <article class="card alt2 mt-card rn1 reveal">
+                                <div class="mt-top"><span class="tag">06 · LIMITS</span><span class="mt-chip">한계 3건</span></div>
+                                <h3 class="h3">알아두면 좋은 한계</h3>
+                                <p class="body-sm">자기보고라 절감 시간이 과대 추정될 수 있고, 재무·법무는 n = 84로 표본이 작습니다.</p>
+                                <p class="scribble sm s1 note">숫자는 <span class="underline">방향성</span>으로 읽어주세요</p>
+                            </article>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 리서치랩 조사 설계서 v2</span><span>03 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 4: STATS (oversized numerals + Caveat unit suffixes) === -->
+            <section class="slide" aria-label="핵심 수치">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Key numbers · 핵심 수치</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">KEY NUMBERS · 핵심 수치</span>
+                            <h2 class="title reveal">숫자로 보는 핵심 3가지</h2>
+                        </div>
+                        <p class="lead reveal">1년 사이 도입률은 두 배 넘게 늘었고, 시간 절감 효과는 ‘잘 쓰는 사람’에게 집중되어 있습니다.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="st-grid">
+                            <article class="card st-card reveal">
+                                <svg class="pin" style="left:40px; top:-22px; --rot:-11deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="st-label">01 · 도입률 ADOPTION</div>
+                                <div class="stat-num">42<small>%</small></div>
+                                <h3 class="h3">주 1회 이상 쓰는 사람</h3>
+                                <p class="body">작년 같은 조사의 18%에서 24%p 올랐습니다. 개발·디자인이 끌고 갔고 영업·운영이 뒤따르는 중입니다.</p>
+                                <p class="scribble s1 note">+24%p, <span class="underline">1년 만에!</span></p>
+                            </article>
+
+                            <article class="card alt st-card r2 reveal">
+                                <div class="st-label">02 · 절감 시간 TIME SAVED</div>
+                                <div class="stat-num">3.4<small>시간</small></div>
+                                <h3 class="h3">주당 평균 절감 시간</h3>
+                                <p class="body">사용자 기준 자가 보고 값입니다. 문서 작성·요약(41%)과 코드 보조(27%)에서 대부분의 시간이 줄었어요.</p>
+                                <p class="scribble s2 note">로그 기준으로는 <span class="underline">2.9시간</span></p>
+                            </article>
+
+                            <article class="card alt2 st-card reveal">
+                                <svg class="pin open sm" style="left:330px; top:-20px; --rot:13deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                                <span class="stamp reveal-stamp" style="right:24px; top:-26px">VERIFIED · 검증 완료</span>
+                                <div class="st-label">03 · 격차 GAP</div>
+                                <div class="stat-num">2.3<small>배</small></div>
+                                <h3 class="h3">상위 20% 사용자의 격차</h3>
+                                <p class="body">상위 20% 사용자는 하위 20%보다 2.3배 많은 시간을 줄입니다. 프롬프트 노하우가 곧 생산성 차이가 됩니다.</p>
+                                <p class="scribble s3 note">노하우 공유가 <span class="underline">열쇠!</span></p>
+                            </article>
+                        </div>
+                        <div class="st-foot">
+                            <p>* 전년 동일 설문(2025 Q3, n = 1,102) 대비 · 오차 ±2.7%p</p>
+                            <p>* 95% 신뢰구간 3.1 – 3.7시간 · 부트스트랩 5,000회</p>
+                            <p>* 상위/하위 20% = 90일 로그 사용량 기준 · 각 n = 257</p>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 임직원 설문(n = 1,284) · SSO 로그 90일</span><span>04 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 5: BAR CHART (ink variant, SVG with manually positioned bars) === -->
+            <section class="slide ink" aria-label="부서별 도입률">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Departments · 부서별</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">DEPARTMENTS · 부서별 도입률</span>
+                            <h2 class="title reveal">부서별 도입률 격차</h2>
+                        </div>
+                        <p class="lead reveal">개발과 재무·법무 사이에는 57%p의 간극이 있습니다. 전사 평균(42%)을 넘은 부서는 6곳 중 3곳뿐이에요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="ch-grid">
+                            <div class="card chart-card ch-card reveal">
+                                <svg class="pin" style="left:48px; top:-22px; --rot:-9deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="ch-head">
+                                    <h3 class="h3">부서별 AI 도구 도입률</h3>
+                                    <span class="tag">주 1회 이상 · 최근 4주 · 단위 %</span>
+                                </div>
+                                <svg class="ch-svg" viewBox="0 0 1136 560" role="img" aria-label="부서별 AI 도구 도입률 막대 차트: 개발 71%, 디자인 58%, 마케팅 49%, 영업 33%, 운영 27%, 재무·법무 14%">
+                                    <!-- gridlines every 20% (5.25px per 1%; baseline y=470) -->
+                                    <g class="grid">
+                                        <line x1="76" y1="365" x2="1116" y2="365"/>
+                                        <line x1="76" y1="260" x2="1116" y2="260"/>
+                                        <line x1="76" y1="155" x2="1116" y2="155"/>
+                                        <line x1="76" y1="50" x2="1116" y2="50"/>
+                                    </g>
+                                    <line class="axis" x1="76" y1="470" x2="1116" y2="470"/>
+                                    <text class="y" x="62" y="475">0</text>
+                                    <text class="y" x="62" y="370">20</text>
+                                    <text class="y" x="62" y="265">40</text>
+                                    <text class="y" x="62" y="160">60</text>
+                                    <text class="y" x="62" y="55">80</text>
+                                    <text class="y" x="76" y="26" style="text-anchor:start">도입률 (%)</text>
+
+                                    <!-- company average 42% -->
+                                    <line class="avg" x1="76" y1="250" x2="1116" y2="250"/>
+                                    <text class="sc" x="1116" y="236" style="text-anchor:end">전사 평균 42%</text>
+
+                                    <!-- hard offset shadows -->
+                                    <rect class="bar-sh" x="116" y="103" width="104" height="373"/>
+                                    <rect class="bar-sh" x="289" y="171" width="104" height="305"/>
+                                    <rect class="bar-sh" x="462" y="219" width="104" height="257"/>
+                                    <rect class="bar-sh" x="636" y="303" width="104" height="173"/>
+                                    <rect class="bar-sh" x="809" y="334" width="104" height="142"/>
+                                    <rect class="bar-sh" x="982" y="402" width="104" height="74"/>
+
+                                    <!-- bars -->
+                                    <rect class="bar" x="111" y="97" width="104" height="373"/>
+                                    <rect class="bar" x="284" y="165" width="104" height="305"/>
+                                    <rect class="bar" x="457" y="213" width="104" height="257"/>
+                                    <rect class="bar lo" x="631" y="297" width="104" height="173"/>
+                                    <rect class="bar lo" x="804" y="328" width="104" height="142"/>
+                                    <rect class="bar lo" x="977" y="396" width="104" height="74"/>
+
+                                    <!-- value labels -->
+                                    <text class="v" x="163" y="81">71%</text>
+                                    <text class="v" x="336" y="149">58%</text>
+                                    <text class="v" x="509" y="197">49%</text>
+                                    <text class="v" x="683" y="281">33%</text>
+                                    <text class="v" x="856" y="312">27%</text>
+                                    <text class="v" x="1029" y="380">14%</text>
+
+                                    <!-- category + sample size labels -->
+                                    <text class="c" x="163" y="508">개발</text>
+                                    <text class="c" x="336" y="508">디자인</text>
+                                    <text class="c" x="509" y="508">마케팅</text>
+                                    <text class="c" x="683" y="508">영업</text>
+                                    <text class="c" x="856" y="508">운영</text>
+                                    <text class="c" x="1029" y="508">재무·법무</text>
+                                    <text class="n" x="163" y="534">n = 260</text>
+                                    <text class="n" x="336" y="534">n = 96</text>
+                                    <text class="n" x="509" y="534">n = 188</text>
+                                    <text class="n" x="683" y="534">n = 247</text>
+                                    <text class="n" x="856" y="534">n = 409</text>
+                                    <text class="n" x="1029" y="534">n = 84</text>
+
+                                    <!-- handwritten annotation + arrow -->
+                                    <text class="sc" x="640" y="112" transform="rotate(-3 640 112)">같은 회사, 다른 세상!</text>
+                                    <path class="arrow" d="M905 128 C 962 150, 1008 222, 1020 330"/>
+                                    <path class="arrow" d="M1006 314 L1020 334 L1036 312"/>
+                                </svg>
+                            </div>
+
+                            <div class="ch-side">
+                                <div class="card chart-card r3 reveal">
+                                    <h3 class="h3-sm">상위 3개 부서 · 평균 이상</h3>
+                                    <div class="mini3">
+                                        <div><b>71%</b><span>개발</span></div>
+                                        <div><b>58%</b><span>디자인</span></div>
+                                        <div><b>49%</b><span>마케팅</span></div>
+                                    </div>
+                                    <p class="body-xs">공통점: 문서·코드처럼 텍스트 산출물이 일의 중심이고, 바로 쓸 수 있는 전용 도구가 있습니다.</p>
+                                </div>
+                                <div class="card chart-card reveal">
+                                    <svg class="pin open sm" style="left:360px; top:-20px; --rot:11deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                                    <h3 class="h3-sm">하위 3개 부서 · 평균 이하</h3>
+                                    <div class="mini3">
+                                        <div><b>33%</b><span>영업</span></div>
+                                        <div><b>27%</b><span>운영</span></div>
+                                        <div><b>14%</b><span>재무·법무</span></div>
+                                    </div>
+                                    <p class="body-xs">공통점: 고객·재무 데이터를 다루다 보니 보안 부담이 크고, 안전하게 쓸 방법이 아직 없습니다.</p>
+                                </div>
+                                <div class="card chart-card rn2 reveal">
+                                    <p class="scribble lg s1">법무·재무는 ‘안 쓰는’ 게 아니라 <span class="underline">‘못 쓰는’</span> 쪽에 가깝다 → 다음 장에서!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 임직원 설문(n = 1,284) · 부서별 n 84–409</span><span>05 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 6: BARRIERS (CSS bars + dashed rows + interview quotes) === -->
+            <section class="slide" aria-label="도입 장벽">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Barriers · 장벽</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">BARRIERS · 도입 장벽</span>
+                            <h2 class="title reveal">도입을 막는 5가지 장벽</h2>
+                        </div>
+                        <p class="lead reveal">복수 응답 기준으로 보안 우려가 압도적 1위입니다. 인터뷰에서도 가장 자주 나온 단어는 ‘데이터’와 ‘불안’이었어요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="bar-grid">
+                            <div class="card br-card reveal">
+                                <svg class="pin" style="left:70px; top:-20px; --rot:-7deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <span class="stamp reveal-stamp" style="right:28px; top:-24px">PRIORITY · 최우선</span>
+                                <div class="tag" style="display:flex; justify-content:space-between; padding:12px 0 10px"><span>RANK · 장벽 유형</span><span>복수 응답 · n = 1,284</span></div>
+                                <div class="br-row">
+                                    <span class="num">1</span>
+                                    <div><div class="br-label">보안·정보유출 우려</div><div class="br-desc">회사 데이터를 입력해도 되는지 모호함</div></div>
+                                    <div class="track"><i style="--v:61%"></i></div>
+                                    <span class="br-val">61%</span>
+                                </div>
+                                <div class="br-row">
+                                    <span class="num">2</span>
+                                    <div><div class="br-label">사용법·교육 부족</div><div class="br-desc">좋은 프롬프트를 배울 곳이 없음</div></div>
+                                    <div class="track"><i style="--v:47%"></i></div>
+                                    <span class="br-val">47%</span>
+                                </div>
+                                <div class="br-row">
+                                    <span class="num">3</span>
+                                    <div><div class="br-label">결과 신뢰성</div><div class="br-desc">그럴듯한 오답, 늘어나는 검수 시간</div></div>
+                                    <div class="track"><i style="--v:44%"></i></div>
+                                    <span class="br-val">44%</span>
+                                </div>
+                                <div class="br-row">
+                                    <span class="num">4</span>
+                                    <div><div class="br-label">업무 맥락 연동 부족</div><div class="br-desc">사내 문서·시스템과 따로 노는 도구</div></div>
+                                    <div class="track"><i style="--v:38%"></i></div>
+                                    <span class="br-val">38%</span>
+                                </div>
+                                <div class="br-row">
+                                    <span class="num">5</span>
+                                    <div><div class="br-label">비용·라이선스 부담</div><div class="br-desc">팀 단위 예산 승인 절차가 불명확</div></div>
+                                    <div class="track"><i style="--v:29%"></i></div>
+                                    <span class="br-val">29%</span>
+                                </div>
+                            </div>
+
+                            <div class="br-side">
+                                <div class="card alt r3 reveal">
+                                    <svg class="pin sm" style="left:46px; top:-18px; --rot:-13deg" aria-hidden="true"><use href="#pin"/></svg>
+                                    <h3 class="h3">인터뷰에서 반복된 말</h3>
+                                    <ul class="qlist">
+                                        <li>“회사 데이터를 넣어도 되는지 몰라서 아예 안 써요.”<cite>— 영업 #07</cite></li>
+                                        <li>“좋은 프롬프트를 팀마다 따로 만들고 있어요.”<cite>— 운영 #19</cite></li>
+                                        <li>“틀린 걸 확인하는 데 더 오래 걸릴 때가 있어요.”<cite>— 재무 #26</cite></li>
+                                    </ul>
+                                    <p class="scribble s2 note">‘보안’이 제일 많이 나왔어요</p>
+                                </div>
+                                <div class="card reveal">
+                                    <h3 class="h3">바로 풀 수 있는 것</h3>
+                                    <ul class="wins">
+                                        <li><span class="num" style="font-size:44px">1</span><span>보안 가이드 1쪽 요약본 배포</span></li>
+                                        <li><span class="num" style="font-size:44px">2</span><span>부서별 프롬프트 라이브러리 개설</span></li>
+                                        <li><span class="num" style="font-size:44px">3</span><span>AI 결과 검수 체크리스트 표준화</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 임직원 설문 Q14 (복수 응답) · 인터뷰 32건</span><span>06 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 7: COMPARISON TABLE (CSS grid + pills) === -->
+            <section class="slide" aria-label="도구 유형별 비교">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Tools · 도구 비교</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">TOOLS · 도구 유형 비교</span>
+                            <h2 class="title reveal">도구 유형별 비교</h2>
+                        </div>
+                        <p class="lead reveal">전체 만족도는 비슷하지만, 보안 통제와 업무 맥락 이해에서 뚜렷한 차이가 납니다. 한 가지 도구로 모든 걸 풀 수는 없어요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="tb-wrap">
+                            <svg class="pin" style="left:60px; top:-20px; --rot:-6deg" aria-hidden="true"><use href="#pin"/></svg>
+                            <svg class="pin open sm" style="left:1380px; top:-18px; --rot:15deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                            <div class="cmp reveal">
+                                <!-- header row -->
+                                <div class="th"><span class="tag">CRITERIA</span><span class="h3-sm">평가 항목</span></div>
+                                <div class="th"><span class="h3-sm">범용 챗봇</span><span class="tag">사용률 31%</span></div>
+                                <div class="th"><span class="h3-sm">코드 어시스턴트</span><span class="tag">사용률 22%</span></div>
+                                <div class="th"><span class="h3-sm">사내 지식봇</span><span class="tag">사용률 14%</span></div>
+                                <div class="th"><span class="h3-sm">문서 자동화 툴</span><span class="tag">사용률 9%</span></div>
+
+                                <!-- row 1 -->
+                                <div><span class="rowhead">보안·데이터 통제<small>입력 데이터의 보호 수준</small></span></div>
+                                <div><span class="pill no">미흡</span><span class="cell-note">외부 서버로 전송</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">엔터프라이즈 격리</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">사내망 안에서 처리</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">일부만 연동</span></div>
+
+                                <!-- row 2 -->
+                                <div><span class="rowhead">업무 맥락 이해<small>사내 문서·코드 참조</small></span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">수동 붙여넣기</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">저장소 인덱싱</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">사내 문서 검색(RAG)</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">템플릿 범위 한정</span></div>
+
+                                <!-- row 3 -->
+                                <div><span class="rowhead">한국어 품질<small>문장 · 용어 · 서식</small></span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">자연스러운 문장</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">주석·문서 위주</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">용어 편차 있음</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">서식 이해 우수</span></div>
+
+                                <!-- row 4 -->
+                                <div><span class="rowhead">도입 비용<small>1인당 월 기준 환산</small></span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">월 $20 / 인</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">월 $39 / 인</span></div>
+                                <div><span class="pill no">미흡</span><span class="cell-note">초기 구축비 별도</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">연 단위 계약</span></div>
+
+                                <!-- row 5 -->
+                                <div><span class="rowhead">학습 곡선<small>처음 쓰기까지의 시간</small></span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">바로 사용 가능</span></div>
+                                <div><span class="pill part">부분</span><span class="cell-note">IDE 적응 필요</span></div>
+                                <div><span class="pill yes">충족</span><span class="cell-note">채팅 UI 그대로</span></div>
+                                <div><span class="pill no">미흡</span><span class="cell-note">교육 필수</span></div>
+
+                                <!-- satisfaction row -->
+                                <div class="last"><span class="rowhead">만족도 (CSAT)<small>10점 만점, 사용자 기준</small></span></div>
+                                <div class="last"><span class="csat">7.4<small>/10</small></span></div>
+                                <div class="last"><span class="csat">8.3<small>/10</small></span></div>
+                                <div class="last"><span class="csat">6.9<small>/10</small></span></div>
+                                <div class="last"><span class="csat">7.1<small>/10</small></span></div>
+                            </div>
+
+                            <div class="tb-foot">
+                                <div class="card alt tb-legend sm rn1 reveal">
+                                    <span class="l"><span class="pill yes">충족</span>요구 사항 충분</span>
+                                    <span class="l"><span class="pill part">부분</span>조건부 충족</span>
+                                    <span class="l"><span class="pill no">미흡</span>기준 미달</span>
+                                </div>
+                                <p class="scribble lg s1 reveal" style="max-width:560px">점수보다 ‘왜’가 중요해요 → 사내 지식봇은 보안은 강한데 <span class="underline">구축이 숙제</span></p>
+                            </div>
+                        </div>
+                        <span class="stamp reveal-stamp" style="right:24px; bottom:14px">참고용 · 정성 평가</span>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>평가: 인터뷰 32건 + 전문가 패널 5인 · 항목별 3점 척도</span><span>07 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 8: QUOTE (oversized Caveat quote glyph) === -->
+            <section class="slide" aria-label="현장의 목소리">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Voices · 인터뷰</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">VOICES · 인터뷰 발췌</span>
+                            <h2 class="title reveal">현장의 목소리</h2>
+                        </div>
+                        <p class="lead reveal">인터뷰 32건에서 가장 자주 반복된 이야기를 골랐습니다. 이름은 직무와 인터뷰 번호로만 표기합니다.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="qt-grid">
+                            <div class="card alt2 lg qt-main r1 reveal">
+                                <svg class="pin lg" style="left:330px; top:-34px; --rot:-6deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="quote-glyph" aria-hidden="true">“</div>
+                                <div class="qt-body">
+                                    <p class="quote-text">처음엔 검색 대신 쓰는 도구였어요. 이젠 회의록부터 보고서 초안까지, 일의 첫 단계가 AI예요.</p>
+                                    <div class="attr"><span class="pill yes">도입 18개월</span><span>— 마케팅팀 매니저 · 인터뷰 #14 · 2026.08.21</span></div>
+                                    <p class="analysis"><b>분석 메모</b> · ‘첫 단계’라는 표현이 인터뷰 32건 중 11건(34%)에서 반복되었고, 모두 도입 12개월 이상 사용자였습니다.</p>
+                                </div>
+                            </div>
+
+                            <div class="qt-side">
+                                <div class="card qt-small rn2 reveal">
+                                    <svg class="pin sm" style="left:40px; top:-18px; --rot:-12deg" aria-hidden="true"><use href="#pin"/></svg>
+                                    <q>“프롬프트 잘 쓰는 동료 옆자리가 제일 좋은 교육이었어요.”</q>
+                                    <cite>— 디자인팀 #03</cite>
+                                </div>
+                                <div class="card alt qt-small r3 reveal">
+                                    <q>“민감한 자료는 아예 막혀 있어서, 쓸 수 있는 일이 한정돼요.”</q>
+                                    <cite>— 재무팀 #26</cite>
+                                </div>
+                                <p class="scribble lg s2 reveal">같은 말을 다른 부서에서도 <span class="underline">세 번 이상</span> 들었다</p>
+                            </div>
+                        </div>
+
+                        <div class="qt-strip reveal">
+                            <div><span class="num" style="font-size:56px">1</span><div><div class="h3-sm">첫 단계의 도구화</div><div class="body-xs">검색·요약·초안 작성이 일의 첫 단계로 옮겨 오는 중</div></div></div>
+                            <div><span class="num" style="font-size:56px">2</span><div><div class="h3-sm">옆자리 학습</div><div class="body-xs">공식 교육보다 동료의 시연이 훨씬 효과적이라고 답함</div></div></div>
+                            <div><span class="num" style="font-size:56px">3</span><div><div class="h3-sm">보이지 않는 벽</div><div class="body-xs">금지 목록이 없어 스스로 사용 범위를 줄이는 사람들</div></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 심층 인터뷰 32건 (2026.08.05–08.30)</span><span>08 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 9: ROADMAP (timeline + hand-numbered process cards + KPI strip) === -->
+            <section class="slide" aria-label="확산 제안 로드맵">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Roadmap · 제안</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">ROADMAP · 확산 제안</span>
+                            <h2 class="title reveal">4단계 확산 제안</h2>
+                        </div>
+                        <p class="lead reveal">보안 가이드를 먼저 세우고, 격차가 큰 부서에서 파일럿을 돌린 뒤 교육과 전사 확산으로 이어갑니다.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="tl reveal">
+                            <div>2026.11 – 12</div>
+                            <div>2027 Q1</div>
+                            <div>2027 Q1 – Q2</div>
+                            <div>2027 Q2 ~</div>
+                        </div>
+                        <p class="scribble s3 note-abs" style="left:640px; top:-6px">여기가 승부처!</p>
+
+                        <div class="rd-grid">
+                            <article class="card rd-card reveal">
+                                <svg class="pin" style="left:36px; top:-22px; --rot:-10deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <div class="rd-top"><span class="num">1</span><span class="mt-chip">가이드</span></div>
+                                <h3 class="h3">보안 가이드 확정</h3>
+                                <p class="body-sm">1쪽 요약본과 ‘입력 금지 데이터’ 목록을 만들고, 승인된 도구 3종을 지정합니다.</p>
+                                <div class="rd-meta"><b>OWNER</b>정보보안팀 · 리서치랩<br><b>KPI</b>가이드 이수율 80%</div>
+                            </article>
+
+                            <article class="card alt rd-card r2 reveal">
+                                <div class="rd-top"><span class="num">2</span><span class="mt-chip">파일럿</span></div>
+                                <h3 class="h3">3개 부서 파일럿</h3>
+                                <p class="body-sm">재무·법무·운영에서 8주간 시범 운영하고, 사내 지식봇을 문서 저장소와 연동합니다.</p>
+                                <div class="rd-meta"><b>OWNER</b>각 부서장 · 리서치랩<br><b>KPI</b>파일럿 도입률 40%</div>
+                            </article>
+
+                            <article class="card rd-card reveal">
+                                <svg class="pin open sm" style="left:260px; top:-20px; --rot:12deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                                <div class="rd-top"><span class="num">3</span><span class="mt-chip">교육</span></div>
+                                <h3 class="h3">교육과 챔피언</h3>
+                                <p class="body-sm">프롬프트 라이브러리를 열고 부서별 챔피언 12명을 키워, 월 1회 사례 공유 세션을 엽니다.</p>
+                                <div class="rd-meta"><b>OWNER</b>HR · 교육팀<br><b>KPI</b>격차 2.3배 → 1.8배</div>
+                            </article>
+
+                            <article class="card alt2 rd-card rn1 reveal">
+                                <div class="rd-top"><span class="num">4</span><span class="mt-chip">확산</span></div>
+                                <h3 class="h3">전사 확산과 재조사</h3>
+                                <p class="body-sm">성과를 분기마다 측정하고, 내년 3분기에 같은 설문으로 재조사해 변화를 비교합니다.</p>
+                                <div class="rd-meta"><b>OWNER</b>전략기획팀<br><b>KPI</b>전사 도입률 60%</div>
+                            </article>
+                        </div>
+
+                        <div class="card alt kpi sm reveal">
+                            <div><div class="tag">TARGET · 도입률</div><div class="ft">42% → 60%</div><div class="body-xs">주 1회 이상 사용 기준, 2027년 말까지</div></div>
+                            <div><div class="tag">TARGET · 절감 시간</div><div class="ft">3.4 → 5.0<small>시간</small></div><div class="body-xs">사용자 1인당 주간 자가 보고 평균</div></div>
+                            <div><div class="tag">TARGET · 부서 격차</div><div class="ft">57%p → 30%p<small>이내</small></div><div class="body-xs">최고·최저 부서 도입률의 차이</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>출처: 리서치랩 제안서 초안 · 일정은 협의 후 확정</span><span>09 / 10</span></footer>
+            </section>
+
+            <!-- === SLIDE 10: CLOSING / DECISIONS === -->
+            <section class="slide" aria-label="결정 사항과 다음 단계">
+                <header class="chrome-top">
+                    <div class="brand"><svg aria-hidden="true"><use href="#mark"/></svg><span>리서치랩 필드노트</span></div>
+                    <div class="meta"><span>Next steps · 다음 단계</span><span>2026 Q3</span></div>
+                </header>
+
+                <div class="slide-content">
+                    <div class="title-row">
+                        <div class="title-block">
+                            <span class="kicker reveal">NEXT STEPS · 다음 단계</span>
+                            <h2 class="title-cta reveal">결정이 필요한 3가지</h2>
+                        </div>
+                        <p class="lead reveal">아래 세 가지가 정해지면 11월 중 파일럿을 시작할 수 있습니다. 오늘 회의에서 담당과 기한을 확정해 주세요.</p>
+                    </div>
+
+                    <div class="region">
+                        <div class="cl-grid">
+                            <div class="card lg cl-card reveal">
+                                <svg class="pin" style="left:70px; top:-20px; --rot:-7deg" aria-hidden="true"><use href="#pin"/></svg>
+                                <span class="stamp reveal-stamp" style="right:30px; top:-26px">승인 요청 · ACTION NEEDED</span>
+                                <div class="cl-row">
+                                    <span class="num">1</span>
+                                    <div><div class="t">보안 가이드라인 확정</div><div class="d">‘입력 금지 데이터’ 목록과 승인 도구 3종을 정보보안팀과 함께 결정</div><div class="tag" style="margin-top:6px">근거 · p.06 장벽 1위 61%</div></div>
+                                    <span class="who">정보보안팀<br>~ 11.15</span>
+                                </div>
+                                <div class="cl-row">
+                                    <span class="num">2</span>
+                                    <div><div class="t">파일럿 부서 선정</div><div class="d">재무·법무·운영 중 2~3곳, 8주 시범 운영과 평가 지표 합의</div><div class="tag" style="margin-top:6px">근거 · p.05 부서 격차 57%p</div></div>
+                                    <span class="who">리서치랩 + 부서장<br>~ 11.22</span>
+                                </div>
+                                <div class="cl-row">
+                                    <span class="num">3</span>
+                                    <div><div class="t">교육 콘텐츠 제작 착수</div><div class="d">프롬프트 라이브러리 초안 작성과 챔피언 12명 모집 공지</div><div class="tag" style="margin-top:6px">근거 · p.04 파워유저 격차 2.3배</div></div>
+                                    <span class="who">HR · 교육팀<br>12월 첫째 주</span>
+                                </div>
+                            </div>
+
+                            <div class="cl-side">
+                                <div class="card cl-contact r3 reveal">
+                                    <svg class="pin open sm" style="left:420px; top:-20px; --rot:9deg" aria-hidden="true"><use href="#pin-open"/></svg>
+                                    <h3 class="h3">의견을 남겨주세요</h3>
+                                    <div class="kv"><span class="k">Slack</span><span class="v">#ai-adoption-research</span></div>
+                                    <div class="kv"><span class="k">메일</span><span class="v">research-lab@acme.example</span></div>
+                                    <div class="kv"><span class="k">오피스아워</span><span class="v">매주 목 15:00–16:00</span></div>
+                                    <div class="kv"><span class="k">원자료</span><span class="v">wiki/research/ai-2026q3</span></div>
+                                </div>
+                                <div class="card alt2 cl-thanks rn2 reveal">
+                                    <p class="scribble s3" style="font-size:80px; line-height:1">읽어줘서 고마워요!</p>
+                                    <p class="body" style="margin-top:12px">질문은 언제든 환영합니다. 이 문서는 사내 위키에서 계속 업데이트됩니다.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <footer class="chrome-foot"><span>리서치랩 · 문의 research-lab@acme.example</span><span>10 / 10</span></footer>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ===========================================
+         DECK CONTROLS (outside the stage): progress bar + prev / next + counter
+         =========================================== -->
+    <div class="deck-progress" id="deckProgress"></div>
+    <nav class="deck-controls" aria-label="슬라이드 이동">
+        <button type="button" id="prevBtn" aria-label="이전 슬라이드">‹</button>
+        <span id="slideCounter">01 / 10</span>
+        <button type="button" id="nextBtn" aria-label="다음 슬라이드">›</button>
+    </nav>
+
+    <!-- ===========================================
+         INLINE EDITING UI — hover the top-left corner or press E
+         =========================================== -->
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="편집 모드 (E)">✏️</button>
+    <div class="edit-banner" id="editBanner">편집 모드 · 텍스트를 클릭해 수정 · Ctrl+S 저장</div>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           Fixed 1920×1080 stage scaled as a whole to the viewport.
+           Keyboard, touch/swipe, mouse-wheel and button navigation.
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.stage = document.getElementById('deckStage');
+                this.slides = Array.from(document.querySelectorAll('.slide'));
+                this.counter = document.getElementById('slideCounter');
+                this.progress = document.getElementById('deckProgress');
+                this.currentSlide = 0;
+                this.wheelLocked = false;
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupButtons();
+                this.showSlide(0);
+            }
+
+            /* Scale the 1920×1080 stage uniformly; letterbox / pillarbox, never reflow */
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            isEditing() {
+                return document.body.classList.contains('editing');
+            }
+
+            /* Arrow keys, Space, Page Up/Down, Home/End */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.isEditing() || e.target.isContentEditable) return;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    switch (e.key) {
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case 'PageDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.next();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prev();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.showSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.showSlide(this.slides.length - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* Touch / swipe support for phones and tablets */
+            setupTouchNav() {
+                let startX = 0;
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startX = e.changedTouches[0].clientX;
+                    startY = e.changedTouches[0].clientY;
+                }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    if (this.isEditing()) return;
+                    const dx = e.changedTouches[0].clientX - startX;
+                    const dy = e.changedTouches[0].clientY - startY;
+                    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                        if (dx < 0) this.next(); else this.prev();
+                    }
+                }, { passive: true });
+            }
+
+            /* Mouse wheel navigation, throttled so one flick = one slide */
+            setupWheelNav() {
+                window.addEventListener('wheel', (e) => {
+                    if (this.isEditing() || this.wheelLocked || Math.abs(e.deltaY) < 8) return;
+                    this.wheelLocked = true;
+                    if (e.deltaY > 0) this.next(); else this.prev();
+                    setTimeout(() => { this.wheelLocked = false; }, 700);
+                }, { passive: true });
+            }
+
+            setupButtons() {
+                document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+                document.getElementById('nextBtn').addEventListener('click', () => this.next());
+            }
+
+            next() { this.showSlide(this.currentSlide + 1); }
+            prev() { this.showSlide(this.currentSlide - 1); }
+
+            /* .active / .visible drive visibility; .visible also triggers the .reveal animations */
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === this.currentSlide);
+                    slide.classList.toggle('visible', i === this.currentSlide);
+                });
+                const total = this.slides.length;
+                this.counter.textContent = String(this.currentSlide + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+                this.progress.style.transform = 'scaleX(' + ((this.currentSlide + 1) / total) + ')';
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           Toggle with the top-left hotzone or the E key. Click any text to edit it.
+           Edits auto-save to localStorage; Ctrl+S downloads the edited HTML file.
+           =========================================== */
+        class Editor {
+            constructor(deck) {
+                this.deck = deck;
+                this.stage = deck.stage;
+                this.toggle = document.getElementById('editToggle');
+                this.banner = document.getElementById('editBanner');
+                this.isActive = false;
+                this.saveTimer = null;
+                this.stage.addEventListener('input', () => this.scheduleSave());
+            }
+
+            static storageKey() {
+                return 'frontend-slides:' + location.pathname + ':' + document.title;
+            }
+
+            /* Restore a previous edit session before the controller binds to the slides */
+            static restore(stage) {
+                try {
+                    const saved = localStorage.getItem(Editor.storageKey());
+                    if (saved) stage.innerHTML = saved;
+                } catch (err) { /* storage unavailable (private mode / file origin) */ }
+            }
+
+            /* Outermost elements that directly hold text become editable */
+            editableElements() {
+                const candidates = Array.from(this.stage.querySelectorAll('h1, h2, h3, p, li, div, span, small, b, cite, q'))
+                    .filter((el) => !el.closest('svg') &&
+                        Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim().length > 0));
+                candidates.forEach((el) => el.setAttribute('data-edit-candidate', ''));
+                const outermost = candidates.filter((el) => !el.parentElement.closest('[data-edit-candidate]'));
+                candidates.forEach((el) => el.removeAttribute('data-edit-candidate'));
+                return outermost;
+            }
+
+            toggleEditMode() {
+                if (this.isActive) this.disable(); else this.enable();
+            }
+
+            enable() {
+                this.isActive = true;
+                document.body.classList.add('editing');
+                this.toggle.classList.add('active');
+                this.banner.classList.add('show');
+                this.editableElements().forEach((el) => {
+                    el.setAttribute('contenteditable', 'true');
+                    el.setAttribute('spellcheck', 'false');
+                });
+            }
+
+            disable() {
+                this.isActive = false;
+                document.body.classList.remove('editing');
+                this.toggle.classList.remove('active', 'show');
+                this.banner.classList.remove('show');
+                this.stage.querySelectorAll('[contenteditable]').forEach((el) => {
+                    el.removeAttribute('contenteditable');
+                    el.removeAttribute('spellcheck');
+                });
+                this.save();
+            }
+
+            cleanStageHTML() {
+                const clone = this.stage.cloneNode(true);
+                clone.querySelectorAll('[contenteditable]').forEach((el) => {
+                    el.removeAttribute('contenteditable');
+                    el.removeAttribute('spellcheck');
+                });
+                clone.querySelectorAll('.slide').forEach((s) => s.classList.remove('active', 'visible'));
+                return clone.innerHTML;
+            }
+
+            scheduleSave() {
+                clearTimeout(this.saveTimer);
+                this.saveTimer = setTimeout(() => this.save(), 600);
+            }
+
+            save() {
+                try { localStorage.setItem(Editor.storageKey(), this.cleanStageHTML()); } catch (err) { /* ignore */ }
+            }
+
+            /* Download the current deck as a standalone HTML file */
+            exportFile() {
+                const clone = document.documentElement.cloneNode(true);
+                clone.querySelector('body').classList.remove('editing');
+                clone.querySelectorAll('[contenteditable]').forEach((el) => {
+                    el.removeAttribute('contenteditable');
+                    el.removeAttribute('spellcheck');
+                });
+                const stage = clone.querySelector('#deckStage');
+                stage.removeAttribute('style');
+                clone.querySelectorAll('.slide').forEach((s, i) => {
+                    s.classList.remove('visible');
+                    s.classList.toggle('active', i === 0);
+                });
+                clone.querySelector('#editToggle').classList.remove('show', 'active');
+                clone.querySelector('#editBanner').classList.remove('show');
+                const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = location.pathname.split('/').pop() || 'presentation.html';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            }
+        }
+
+        /* ===========================================
+           BOOT
+           =========================================== */
+        Editor.restore(document.getElementById('deckStage'));
+        const deck = new SlidePresentation();
+        const editor = new Editor(deck);
+
+        /* --- Edit toggle wiring (JS hover with a 400ms grace period; no CSS ~ selector) --- */
+        // 1. Click handler on the toggle button
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 2. Hotzone hover with 400ms grace period
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        // 3. Hotzone direct click
+        hotzone.addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 4. Keyboard shortcuts: E toggles edit mode (ignored while typing), Esc leaves it, Ctrl+S saves
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.isContentEditable) {
+                editor.toggleEditMode();
+            } else if (e.key === 'Escape' && editor.isActive) {
+                editor.disable();
+            } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S') && editor.isActive) {
+                e.preventDefault();
+                editor.save();
+                editor.exportFile();
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

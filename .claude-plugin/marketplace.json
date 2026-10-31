@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "deck2pptx",
+  "description": "Convert HTML slide decks into editable PowerPoint files that keep the same design.",
+  "owner": {
+    "name": "moumee"
+  },
+  "plugins": [
+    {
+      "name": "deck2pptx",
+      "description": "Convert HTML slide decks into editable PowerPoint files that keep the same design: real text, shapes, tables and embedded fonts.",
+      "source": "./",
+      "category": "productivity",
+      "tags": ["powerpoint", "pptx", "slides", "presentations", "html"]
+    }
+  ]
+}

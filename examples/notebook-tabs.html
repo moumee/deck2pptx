@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saltkiln Ceramics — Studio Pitch 2026</title>
+
+    <!--
+        HOW TO CUSTOMIZE
+        - Colors: edit the :root variables in the style block (tab colors are --tab-1 to --tab-5)
+        - Typography: change the Google Fonts link below and the --font-display / --font-body variables
+        - Animations: adjust the .reveal rules and --duration-normal
+        - Images: files live in assets/ and are referenced with relative paths
+        - Edit text in the browser: hover the top-left corner or press E, click any text, Ctrl+S saves a copy
+    -->
+
+    <!-- Fonts: Bodoni Moda (display, variable with an optical-size axis) + DM Sans (body) from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           Change these to change the whole look
+           =========================================== */
+        :root {
+            /* Colors — Notebook Tabs preset */
+            --bg-outer: #2d2d2d;           /* dark desk behind the notebook */
+            --bg-outer-deep: #1c1c1c;      /* binder holes + vignette */
+            --bg-page: #f8f6f1;            /* cream paper */
+            --bg-page-shade: #efebe2;      /* cards printed on the paper */
+            --text-primary: #1a1a1a;
+            --text-secondary: #57524a;
+            --text-muted: #756f65;
+            --text-on-dark: #f8f6f1;
+            --accent: #a9472f;             /* fired terracotta: italics + numerals */
+            --rule: rgba(26, 26, 26, 0.16);
+
+            /* Section tab colors */
+            --tab-1: #98d4bb; /* Mint */
+            --tab-2: #c7b8ea; /* Lavender */
+            --tab-3: #f4b8c5; /* Pink */
+            --tab-4: #a8d8ea; /* Sky */
+            --tab-5: #ffe6a7; /* Cream */
+
+            /* Stage colors consumed by viewport-base.css */
+            --stage-bg: #151515;
+            --slide-bg: var(--bg-outer);
+
+            /* Typography — authored at 1920×1080 stage size */
+            --font-display: 'Bodoni Moda', 'Didot', serif;
+            --font-body: 'DM Sans', sans-serif;
+            --title-size: 176px;
+            --h2-size: 84px;
+            --subtitle-size: 32px;
+            --body-size: 28px;
+            --small-size: 22px;
+            --label-size: 20px;
+
+            /* Spacing — authored at 1920×1080 stage size */
+            --slide-padding: 72px;
+            --content-gap: 32px;
+
+            /* Paper card geometry (stage pixels) */
+            --paper-x: 80px;
+            --paper-y: 60px;
+            --paper-w: 1696px;
+            --paper-h: 960px;
+
+            /* Animation */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.85s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           Include this ENTIRE file in every presentation.
+           Slides are authored at 1920×1080 and scaled as a whole.
+           =========================================== */
+
+        /* 1. Lock the browser viewport */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 2. Full-window deck viewport */
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+
+        /* 3. Fixed 16:9 design canvas.
+           JavaScript sets transform: translate(...) scale(...). */
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+
+        /* 4. Slides stack inside the fixed stage.
+           Content must be laid out at 1920×1080, not reflowed per device. */
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--slide-bg, #fff);
+        }
+
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        /* 5. Keep media inside authored slide bounds */
+        img,
+        video,
+        canvas,
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* 6. Presentation chrome stays outside the slide design system */
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        /* 7. Print one fixed-size slide per page */
+        @media print {
+            html,
+            body {
+                width: 1920px;
+                height: auto;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-viewport {
+                position: static;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-stage {
+                position: static;
+                width: auto;
+                height: auto;
+                transform: none !important;
+                background: none;
+            }
+
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+
+            .slide:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .deck-controls {
+                display: none !important;
+            }
+        }
+
+        /* 8. Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           Trigger via .visible class on the active slide.
+           Calm + editorial: slow fades, a short vertical drift,
+           staggered by child order.
+           =========================================== */
+        .reveal,
+        .reveal-scale {
+            opacity: 0;
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .reveal { transform: translateY(26px); }
+        .reveal-scale { transform: scale(0.94); }
+
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal-scale { opacity: 1; transform: scale(1); }
+
+        /* Stagger children for sequential reveal */
+        .reveal:nth-child(1), .reveal-scale:nth-child(1) { transition-delay: 0.10s; }
+        .reveal:nth-child(2), .reveal-scale:nth-child(2) { transition-delay: 0.22s; }
+        .reveal:nth-child(3), .reveal-scale:nth-child(3) { transition-delay: 0.34s; }
+        .reveal:nth-child(4), .reveal-scale:nth-child(4) { transition-delay: 0.46s; }
+        .reveal:nth-child(5), .reveal-scale:nth-child(5) { transition-delay: 0.58s; }
+        .reveal:nth-child(6), .reveal-scale:nth-child(6) { transition-delay: 0.70s; }
+
+        /* Lists/cards that should arrive AFTER their heading */
+        .stagger-late > .reveal:nth-child(1) { transition-delay: 0.40s; }
+        .stagger-late > .reveal:nth-child(2) { transition-delay: 0.52s; }
+        .stagger-late > .reveal:nth-child(3) { transition-delay: 0.64s; }
+        .stagger-late > .reveal:nth-child(4) { transition-delay: 0.76s; }
+        .stagger-late > .reveal:nth-child(5) { transition-delay: 0.88s; }
+
+        /* Section tabs slide out of the paper edge one after another */
+        @keyframes tab-in {
+            from { opacity: 0; transform: translateX(-26px); }
+        }
+
+        /* Print: show everything, no animation state */
+        @media print {
+            .reveal,
+            .reveal-scale {
+                opacity: 1 !important;
+                transform: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ===========================================
+           NOTEBOOK FRAME
+           Dark desk -> stacked cream paper card -> binder holes -> margin rule
+           =========================================== */
+        .slide {
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            line-height: 1.5;
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            background:
+                radial-gradient(ellipse at 26% 14%, rgba(255, 255, 255, 0.06) 0%, transparent 55%),
+                radial-gradient(ellipse at 50% 125%, rgba(0, 0, 0, 0.5) 0%, transparent 62%),
+                var(--bg-outer);
+        }
+
+        /* Second sheet peeking out underneath the main page */
+        .slide::before {
+            content: '';
+            position: absolute;
+            left: calc(var(--paper-x) + 10px);
+            top: calc(var(--paper-y) + 14px);
+            width: var(--paper-w);
+            height: var(--paper-h);
+            border-radius: 6px 16px 16px 6px;
+            background: #e6e1d5;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        /* The cream paper card */
+        .paper {
+            position: absolute;
+            left: var(--paper-x);
+            top: var(--paper-y);
+            width: var(--paper-w);
+            height: var(--paper-h);
+            overflow: hidden;
+            border-radius: 6px 16px 16px 6px;
+            background:
+                linear-gradient(90deg, rgba(60, 40, 20, 0.07) 0%, rgba(60, 40, 20, 0) 96px),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 120px),
+                var(--bg-page);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.5) inset,
+                0 40px 90px rgba(0, 0, 0, 0.55),
+                0 10px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        /* Faint red margin rule, like a school notebook */
+        .paper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 104px;
+            width: 2px;
+            background: rgba(201, 98, 98, 0.28);
+        }
+
+        /* Binder holes punched through the left edge */
+        .binder-holes {
+            position: absolute;
+            left: 28px;
+            top: 0;
+            bottom: 0;
+            width: 46px;
+        }
+
+        .binder-holes span {
+            position: absolute;
+            left: 0;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 38% 30%, #3b3b3b 0%, var(--bg-outer-deep) 75%);
+            box-shadow:
+                inset 0 5px 9px rgba(0, 0, 0, 0.75),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+                0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        .binder-holes span:nth-child(1) { top: 170px; }
+        .binder-holes span:nth-child(2) { top: 457px; }
+        .binder-holes span:nth-child(3) { top: 744px; }
+
+        /* Content area inside the paper (1442 × 800 at stage scale) */
+        .slide-content {
+            position: absolute;
+            left: 150px;
+            right: 104px;
+            top: 84px;
+            bottom: 76px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Running footer: studio name + page number */
+        .paper-footer {
+            position: absolute;
+            left: 150px;
+            right: 104px;
+            bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 18px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .page-no {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-size: 26px;
+            letter-spacing: 0.04em;
+            text-transform: none;
+            color: var(--text-muted);
+        }
+
+        /* ===========================================
+           SECTION TABS (right edge, vertical text)
+           Tab text scales with the stage because it lives inside the
+           fixed 1920×1080 canvas, so no viewport clamp() is needed here.
+           =========================================== */
+        .tabs {
+            position: absolute;
+            left: calc(var(--paper-x) + var(--paper-w) - 12px);
+            top: 128px;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .tab {
+            display: block;
+            padding: 24px 17px;
+            border: 0;
+            border-radius: 0 12px 12px 0;
+            background: var(--tab-color, var(--tab-1));
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            writing-mode: vertical-rl;
+            box-shadow: 4px 6px 14px rgba(0, 0, 0, 0.35), inset -2px 0 0 rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: transform 0.4s var(--ease-out-expo), filter 0.3s ease;
+            filter: saturate(0.85) brightness(0.97);
+        }
+
+        .tab:hover { transform: translateX(6px); }
+        .tab:focus-visible { outline: 3px solid var(--tab-5); outline-offset: 3px; }
+
+        .tab.is-current {
+            transform: translateX(12px);
+            filter: none;
+            box-shadow: 6px 8px 18px rgba(0, 0, 0, 0.45), inset -2px 0 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-1 { --tab-color: var(--tab-1); }
+        .tab-2 { --tab-color: var(--tab-2); }
+        .tab-3 { --tab-color: var(--tab-3); }
+        .tab-4 { --tab-color: var(--tab-4); }
+        .tab-5 { --tab-color: var(--tab-5); }
+
+        .slide.visible .tab { animation: tab-in 0.8s var(--ease-out-expo) backwards; }
+        .slide.visible .tab:nth-child(1) { animation-delay: 0.25s; }
+        .slide.visible .tab:nth-child(2) { animation-delay: 0.32s; }
+        .slide.visible .tab:nth-child(3) { animation-delay: 0.39s; }
+        .slide.visible .tab:nth-child(4) { animation-delay: 0.46s; }
+        .slide.visible .tab:nth-child(5) { animation-delay: 0.53s; }
+
+        /* ===========================================
+           TYPOGRAPHY
+           Bodoni Moda headlines (optical sizing on) + DM Sans body
+           =========================================== */
+        h1,
+        h2,
+        h3 {
+            font-family: var(--font-display);
+            font-weight: 400;
+            font-optical-sizing: auto;   /* opsz axis 6–96: big headlines get the hairline-sharp cut */
+            letter-spacing: -0.015em;
+            color: var(--text-primary);
+        }
+
+        h1 { font-size: var(--title-size); line-height: 0.96; }
+        h2 { font-size: var(--h2-size); line-height: 1.04; }
+
+        /* Italic emphasis inside headlines */
+        .ital {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        em { font-style: italic; }
+
+        .eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 28px;
+            font-size: var(--label-size);
+            font-weight: 500;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .eyebrow::before {
+            content: '';
+            flex: 0 0 56px;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        .lede,
+        .sub {
+            font-size: var(--subtitle-size);
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        figcaption {
+            margin-top: 18px;
+            font-size: var(--label-size);
+            font-style: italic;
+            line-height: 1.4;
+            color: var(--text-muted);
+        }
+
+        /* Images — fixed pixel sizes (the whole stage scales, not the image) */
+        .slide-image {
+            display: block;
+            max-width: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .slide-image.photo { object-fit: cover; }
+        .slide-image.logo { width: 480px; height: 360px; border-radius: 0; }
+        .slide-image.logo-sm { width: 100%; height: 200px; object-position: left center; border-radius: 0; }
+
+        /* ===========================================
+           SLIDE 1: TITLE
+           =========================================== */
+        .title-layout {
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            column-gap: 60px;
+            align-items: center;
+        }
+
+        .title-copy h1 { margin-bottom: 40px; }
+        .title-copy .lede { max-width: 740px; }
+
+        .meta-row {
+            display: flex;
+            gap: 28px;
+            max-width: 740px;
+            margin-top: 56px;
+            padding-top: 24px;
+            border-top: 1px solid var(--rule);
+            list-style: none;
+            font-size: var(--small-size);
+            color: var(--text-muted);
+        }
+
+        .meta-row li + li::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin-right: 28px;
+            border-radius: 50%;
+            vertical-align: middle;
+            background: var(--accent);
+        }
+
+        /* ===========================================
+           SLIDE 2: THE IDEA (statement + black-and-white photo)
+           =========================================== */
+        .statement-layout {
+            display: grid;
+            grid-template-columns: 492px 1fr;
+            column-gap: 90px;
+            align-items: center;
+        }
+
+        .photo-gray .slide-image {
+            width: 492px;
+            height: 620px;
+            object-position: 22% 50%;
+            border-radius: 4px;
+            filter: grayscale(1) contrast(1.08);
+        }
+
+        .statement { font-size: 92px; line-height: 1.04; }
+        .statement-copy .sub { max-width: 700px; margin-top: 44px; }
+
+        /* ===========================================
+           SLIDE 3: OUR STORY (drop cap + photo — a reading slide)
+           =========================================== */
+        .story-layout {
+            display: grid;
+            grid-template-columns: 780px 560px;
+            column-gap: 102px;
+            align-items: center;
+        }
+
+        .story-copy h2 { margin-bottom: 36px; font-size: 68px; }
+
+        .dropcap {
+            font-size: 27px;
+            line-height: 1.62;
+            color: var(--text-primary);
+        }
+
+        .dropcap::first-letter {
+            float: left;
+            padding: 8px 16px 0 0;
+            font-family: var(--font-display);
+            font-size: 132px;
+            font-weight: 500;
+            line-height: 0.78;
+            color: var(--accent);
+        }
+
+        .story-stats {
+            display: flex;
+            gap: 56px;
+            margin-top: 34px;
+            padding-top: 24px;
+            border-top: 1px solid var(--rule);
+            list-style: none;
+        }
+
+        .story-stats li { display: flex; align-items: baseline; gap: 14px; }
+
+        .story-stats strong {
+            font-family: var(--font-display);
+            font-size: 56px;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .story-stats span {
+            font-size: var(--small-size);
+            color: var(--text-secondary);
+        }
+
+        .story-photo .slide-image {
+            width: 560px;
+            height: 640px;
+            object-position: 72% 50%;
+            border-radius: 14px;
+            box-shadow:
+                0 28px 56px rgba(26, 26, 26, 0.30),
+                0 6px 14px rgba(26, 26, 26, 0.18);
+        }
+
+        /* ===========================================
+           SLIDE 4: TIMELINE (dots = ::before, connecting lines = ::after)
+           =========================================== */
+        .timeline-layout { gap: 96px; }
+
+        .timeline {
+            display: flex;
+            list-style: none;
+        }
+
+        .milestone {
+            position: relative;
+            flex: 1 1 0;
+            padding: 84px 28px 0 0;
+        }
+
+        /* The dot */
+        .milestone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            width: 34px;
+            height: 34px;
+            border: 4px solid var(--text-primary);
+            border-radius: 50%;
+            background: var(--dot, var(--tab-1));
+        }
+
+        /* The line that runs to the next dot */
+        .milestone::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 34px;
+            right: 0;
+            height: 4px;
+            background: var(--text-primary);
+        }
+
+        /* The last milestone only gets a dashed "to be continued" stub */
+        .milestone:last-child::after {
+            right: auto;
+            width: 140px;
+            background: repeating-linear-gradient(90deg, var(--text-primary) 0 12px, transparent 12px 24px);
+        }
+
+        .milestone:nth-child(1) { --dot: var(--tab-1); }
+        .milestone:nth-child(2) { --dot: var(--tab-2); }
+        .milestone:nth-child(3) { --dot: var(--tab-3); }
+        .milestone:nth-child(4) { --dot: var(--tab-4); }
+        .milestone:nth-child(5) { --dot: var(--tab-5); }
+
+        /* "Now" is a bigger dot with a halo */
+        .milestone.is-now::before {
+            top: -5px;
+            left: -5px;
+            width: 44px;
+            height: 44px;
+            box-shadow: 0 0 0 8px rgba(255, 230, 167, 0.55);
+        }
+
+        .milestone .year {
+            display: block;
+            margin-bottom: 8px;
+            font-family: var(--font-display);
+            font-size: 64px;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+        }
+
+        .milestone.is-now .year { font-style: italic; color: var(--accent); }
+
+        .milestone h3 {
+            margin-bottom: 8px;
+            font-family: var(--font-body);
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.25;
+            letter-spacing: 0;
+        }
+
+        .milestone p {
+            font-size: var(--small-size);
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 5: THE CRAFT (real <ol> + clip-path image)
+           =========================================== */
+        .craft-layout {
+            display: grid;
+            grid-template-columns: 1fr 520px;
+            column-gap: 70px;
+            align-items: stretch;
+        }
+
+        .craft-copy {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .craft-copy h2 { margin-bottom: 36px; font-size: 72px; }
+
+        .steps { padding-left: 62px; }
+
+        .steps li { margin-bottom: 16px; padding-left: 6px; }
+        .steps li:last-child { margin-bottom: 0; }
+
+        .steps li::marker {
+            font-family: var(--font-display);
+            font-size: 38px;
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .step-title {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 38px;
+            line-height: 1.2;
+        }
+
+        .step-desc {
+            display: block;
+            font-size: 24px;
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .craft-image .slide-image,
+        .clip-img {
+            width: 520px;
+            height: 800px;
+            object-position: 66% 50%;
+            border-radius: 0;
+            clip-path: polygon(26% 0, 100% 0, 100% 100%, 0 100%);
+        }
+
+        /* ===========================================
+           SLIDE 6: FOUR PROMISES (CSS counter() in ::before)
+           =========================================== */
+        .promises {
+            counter-reset: promise;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 28px;
+            margin-top: 56px;
+            list-style: none;
+        }
+
+        .promise {
+            counter-increment: promise;
+            padding: 30px 30px 36px;
+            border-top: 8px solid var(--tab-color, var(--tab-1));
+            border-radius: 6px 6px 16px 16px;
+            background: var(--bg-page-shade);
+        }
+
+        .promise::before {
+            content: counter(promise, decimal-leading-zero);
+            display: block;
+            margin-bottom: 18px;
+            font-family: var(--font-display);
+            font-size: 104px;
+            font-style: italic;
+            line-height: 1;
+            color: var(--accent);
+        }
+
+        .promise:nth-child(1) { --tab-color: var(--tab-1); }
+        .promise:nth-child(2) { --tab-color: var(--tab-2); }
+        .promise:nth-child(3) { --tab-color: var(--tab-3); }
+        .promise:nth-child(4) { --tab-color: var(--tab-4); }
+
+        .promise h3 { margin-bottom: 14px; font-size: 36px; line-height: 1.15; }
+
+        .promise p {
+            font-size: 24px;
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           SLIDE 7: THE FIRING (full-bleed CSS background image + overlay)
+           Declared after the base .slide rules so the image wins the cascade.
+           =========================================== */
+        .slide--bleed {
+            background-color: var(--bg-outer-deep);
+            background-image:
+                linear-gradient(90deg, rgba(18, 12, 10, 0.88) 0%, rgba(18, 12, 10, 0.62) 42%, rgba(18, 12, 10, 0.12) 100%),
+                linear-gradient(0deg, rgba(18, 12, 10, 0.55) 0%, rgba(18, 12, 10, 0) 45%),
+                url('assets/studio-kiln.jpg');
+            background-size: cover, cover, cover;
+            background-position: center, center, 62% 50%;
+            background-repeat: no-repeat;
+        }
+
+        .slide--bleed::before { display: none; }
+
+        .bleed-copy {
+            position: absolute;
+            left: 150px;
+            bottom: 170px;
+            width: 1060px;
+            color: var(--text-on-dark);
+        }
+
+        .bleed-copy h2 {
+            margin-bottom: 30px;
+            font-size: 112px;
+            line-height: 1.02;
+            color: var(--text-on-dark);
+        }
+
+        .bleed-copy p:not(.eyebrow) {
+            max-width: 760px;
+            font-size: var(--subtitle-size);
+            line-height: 1.45;
+            color: rgba(248, 246, 241, 0.86);
+        }
+
+        .bleed-copy .eyebrow { color: rgba(248, 246, 241, 0.82); }
+        .bleed-copy .eyebrow::before { background: var(--tab-5); }
+        .bleed-copy .ital { color: var(--tab-5); }
+
+        .photo-credit {
+            position: absolute;
+            left: 150px;
+            bottom: 70px;
+            font-size: 18px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(248, 246, 241, 0.7);
+        }
+
+        .page-no--float {
+            position: absolute;
+            right: 190px;
+            bottom: 62px;
+            color: rgba(248, 246, 241, 0.8);
+        }
+
+        /* ===========================================
+           SLIDE 8: IN THEIR WORDS (pull quote + circular crop)
+           =========================================== */
+        .quote-layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            column-gap: 110px;
+            align-items: center;
+        }
+
+        .portrait { display: flex; justify-content: center; }
+
+        .portrait .slide-image {
+            width: 380px;
+            height: 380px;
+            object-position: 88% 40%;
+            border-radius: 50%;
+            box-shadow:
+                0 0 0 12px var(--bg-page),
+                0 0 0 15px var(--text-primary),
+                0 30px 54px rgba(26, 26, 26, 0.28);
+        }
+
+        .pull-quote::before {
+            content: '\201C';
+            display: block;
+            height: 84px;
+            font-family: var(--font-display);
+            font-size: 200px;
+            line-height: 1;
+            color: var(--tab-3);
+        }
+
+        .pull-quote p {
+            font-family: var(--font-display);
+            font-size: 66px;
+            font-style: italic;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+
+        .quote-by {
+            display: block;
+            margin-top: 40px;
+            font-size: 24px;
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        .quote-by strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: var(--label-size);
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        /* ===========================================
+           SLIDE 9: MEMBERSHIP (pricing comparison cards — a reading slide)
+           =========================================== */
+        .pricing {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 36px;
+            margin-top: 44px;
+            align-items: stretch;
+        }
+
+        .plan {
+            position: relative;
+            padding: 36px 38px 38px;
+            border: 1px solid var(--rule);
+            border-radius: 16px;
+            background: var(--bg-page-shade);
+        }
+
+        .plan .tier {
+            display: block;
+            font-size: var(--label-size);
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .plan .price {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin: 18px 0 12px;
+            font-family: var(--font-display);
+            font-size: 96px;
+            line-height: 1;
+        }
+
+        .plan .price small {
+            font-family: var(--font-body);
+            font-size: var(--small-size);
+            color: var(--text-muted);
+        }
+
+        .plan .blurb {
+            min-height: 62px;
+            font-size: var(--small-size);
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        .plan hr {
+            height: 0;
+            margin: 26px 0 22px;
+            border: 0;
+            border-top: 1px solid var(--rule);
+        }
+
+        .features { list-style: none; }
+
+        .features li {
+            position: relative;
+            margin-bottom: 12px;
+            padding-left: 28px;
+            font-size: var(--small-size);
+            line-height: 1.4;
+        }
+
+        .features li:last-child { margin-bottom: 0; }
+
+        .features li::before {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 0.6em;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        /* Featured plan: ink-dark card */
+        .plan--featured {
+            border-color: var(--text-primary);
+            background: var(--text-primary);
+            color: var(--text-on-dark);
+            box-shadow: 0 30px 60px rgba(26, 26, 26, 0.32);
+        }
+
+        .plan--featured .tier { color: var(--tab-4); }
+        .plan--featured .price small { color: rgba(248, 246, 241, 0.6); }
+        .plan--featured .blurb { color: rgba(248, 246, 241, 0.78); }
+        .plan--featured hr { border-top-color: rgba(248, 246, 241, 0.22); }
+        .plan--featured .features li::before { background: var(--tab-4); }
+
+        .plan-badge {
+            position: absolute;
+            top: -18px;
+            right: 30px;
+            padding: 8px 18px;
+            border-radius: 999px;
+            background: var(--tab-4);
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        /* ===========================================
+           SLIDE 10: THE ASK (oversized numeral + call to action)
+           =========================================== */
+        .ask-layout {
+            display: grid;
+            grid-template-columns: 640px 1fr;
+            column-gap: 80px;
+            align-items: center;
+        }
+
+        .ask-number { text-align: center; }
+
+        .ask-number strong {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 480px;
+            font-weight: 400;
+            line-height: 0.82;
+            letter-spacing: -0.04em;
+            color: var(--accent);
+        }
+
+        .ask-number span {
+            display: block;
+            margin-top: 30px;
+            font-size: var(--small-size);
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .ask-copy h2 { margin-bottom: 28px; font-size: 66px; line-height: 1.08; }
+
+        .ask-copy .note {
+            max-width: 660px;
+            font-size: var(--body-size);
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        .cta {
+            display: flex;
+            align-items: center;
+            width: fit-content;
+            margin-top: 44px;
+            padding: 20px 34px;
+            border: 2px solid var(--text-primary);
+            border-radius: 999px;
+            font-size: 26px;
+            font-weight: 500;
+        }
+
+        /* ===========================================
+           SLIDE 11: CLOSING
+           =========================================== */
+        .closing-layout {
+            display: grid;
+            grid-template-columns: 860px 1fr;
+            column-gap: 80px;
+            align-items: center;
+        }
+
+        .closing-copy h1 { font-size: 124px; line-height: 1; }
+
+        .contact { margin-top: 36px; }
+
+        .contact div {
+            padding: 18px 0;
+            border-top: 1px solid var(--rule);
+        }
+
+        .contact dt {
+            margin-bottom: 6px;
+            font-size: 18px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .contact dd {
+            font-size: 26px;
+            line-height: 1.4;
+        }
+
+        /* ===========================================
+           DECK CONTROLS (outside the stage: progress bar + slide counter)
+           clamp() is fine here because this UI is not part of the 1920×1080 slide
+           =========================================== */
+        .progress-track {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 900;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .progress-track i {
+            display: block;
+            height: 100%;
+            width: calc(var(--p, 0) * 100%);
+            background: linear-gradient(90deg, var(--tab-1), var(--tab-2), var(--tab-3), var(--tab-4), var(--tab-5));
+            transition: width 0.6s var(--ease-out-expo);
+        }
+
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 6px 10px;
+            border: 1px solid rgba(248, 246, 241, 0.14);
+            border-radius: 999px;
+            background: rgba(21, 21, 21, 0.62);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            font-family: var(--font-body);
+            font-size: clamp(11px, 1vw, 14px);
+            letter-spacing: 0.16em;
+            color: var(--text-on-dark);
+        }
+
+        .nav-btn {
+            width: clamp(26px, 2.2vw, 34px);
+            height: clamp(26px, 2.2vw, 34px);
+            border: 1px solid rgba(248, 246, 241, 0.25);
+            border-radius: 50%;
+            background: transparent;
+            font-size: clamp(12px, 1.1vw, 16px);
+            color: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .nav-btn:hover { background: rgba(248, 246, 241, 0.14); }
+
+        .slide-counter {
+            min-width: 7ch;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        @media print {
+            .progress-track,
+            .edit-hotzone,
+            .edit-toggle,
+            .edit-toast { display: none !important; }
+        }
+
+        /* ===========================================
+           INLINE EDITING UI
+           Visibility is controlled by JS classes only (no ~ sibling selector)
+           =========================================== */
+        /* Do NOT use CSS ~ sibling selector for this!
+           pointer-events: none breaks the hover chain.
+           Must use JS with delay timeout. */
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+
+        .edit-toggle {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            width: 44px;
+            height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 50%;
+            background: rgba(21, 21, 21, 0.72);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, background 0.2s ease;
+            z-index: 10001;
+        }
+
+        .edit-toggle.show,
+        .edit-toggle.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .edit-toggle.active { background: var(--accent); }
+
+        body.editing [contenteditable="true"] {
+            outline: 2px dashed rgba(169, 71, 47, 0.55);
+            outline-offset: 6px;
+            cursor: text;
+        }
+
+        body.editing [contenteditable="true"]:focus {
+            outline-style: solid;
+            background: rgba(255, 230, 167, 0.35);
+        }
+
+        .edit-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 72px;
+            z-index: 10002;
+            padding: 10px 18px;
+            border-radius: 999px;
+            background: rgba(21, 21, 21, 0.9);
+            font-family: var(--font-body);
+            font-size: 14px;
+            color: var(--text-on-dark);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-50%) translateY(8px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .edit-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <!-- ===========================================
+         DECK VIEWPORT + FIXED 1920×1080 STAGE
+         =========================================== -->
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- === SLIDE 1: TITLE === -->
+            <section class="slide title-slide active">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content title-layout">
+                        <div class="title-copy">
+                            <p class="eyebrow reveal">A studio pitch &middot; Autumn 2026</p>
+                            <h1 class="reveal">Saltkiln<br><span class="ital">Ceramics</span></h1>
+                            <p class="lede reveal">Hand-thrown pottery for everyday rituals, salt-fired in Maine and signed by the person who made it.</p>
+                            <ul class="meta-row reveal">
+                                <li>Rockport, Maine</li>
+                                <li>Est. 2019</li>
+                                <li>9 potters, 2 kilns</li>
+                            </ul>
+                        </div>
+                        <div class="title-mark reveal-scale">
+                            <img src="assets/saltkiln-mark.png" alt="Saltkiln Ceramics mark: a cream vase inside a terracotta disc" class="slide-image logo">
+                        </div>
+                    </div>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1 is-current" data-goto="0" aria-current="true">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 2: THE IDEA (statement + black-and-white photo) === -->
+            <section class="slide statement-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content statement-layout">
+                        <figure class="photo-gray reveal-scale">
+                            <img src="assets/glaze-tests.webp" alt="A shelf of identical glazed vessels, shown in black and white" class="slide-image photo">
+                            <figcaption>Machine-made, 2019: identical, anonymous, forgotten.</figcaption>
+                        </figure>
+                        <div class="statement-copy">
+                            <p class="eyebrow reveal">The idea</p>
+                            <h2 class="statement reveal">Most mugs are made by machines for <span class="ital">no one in particular.</span></h2>
+                            <p class="sub reveal">We make the other kind: one pot, one person, one morning at a time.</p>
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">02</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1 is-current" data-goto="0" aria-current="true">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 3: OUR STORY (drop cap + photo, a reading slide) === -->
+            <section class="slide story-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content story-layout">
+                        <div class="story-copy">
+                            <p class="eyebrow reveal">Our story</p>
+                            <h2 class="reveal">From a borrowed wheel to a <span class="ital">working studio</span></h2>
+                            <p class="dropcap reveal">Maya Okafor threw her first hundred mugs on a borrowed wheel in 2019, in a garage that smelled permanently of wet clay. She fired them in a second-hand kiln, gave most away, then sold her first thousand to a caf&eacute; down the road. People kept asking where the cups came from, so we opened the door, added a second wheel, and never quite closed it again.</p>
+                            <ul class="story-stats reveal">
+                                <li><strong>9</strong><span>potters</span></li>
+                                <li><strong>2</strong><span>salt kilns</span></li>
+                                <li><strong>40</strong><span>working members</span></li>
+                            </ul>
+                        </div>
+                        <figure class="story-photo reveal-scale">
+                            <img src="assets/studio-kiln.jpg" alt="The garage kiln glowing during its first firing" class="slide-image photo">
+                            <figcaption>The garage kiln, first firing, March 2019.</figcaption>
+                        </figure>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">03</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2 is-current" data-goto="2" aria-current="true">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 4: TIMELINE (dots + connecting lines from pseudo-elements) === -->
+            <section class="slide timeline-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content timeline-layout">
+                        <div class="slide-head">
+                            <p class="eyebrow reveal">The timeline</p>
+                            <h2 class="reveal">Seven years in the <span class="ital">fire</span></h2>
+                        </div>
+                        <ul class="timeline stagger-late">
+                            <li class="milestone reveal">
+                                <span class="year">2019</span>
+                                <h3>The garage</h3>
+                                <p>One borrowed wheel and a second-hand kiln.</p>
+                            </li>
+                            <li class="milestone reveal">
+                                <span class="year">2021</span>
+                                <h3>First 50 members</h3>
+                                <p>Word of mouth fills every Saturday class.</p>
+                            </li>
+                            <li class="milestone reveal">
+                                <span class="year">2023</span>
+                                <h3>Tidewater Mill</h3>
+                                <p>We move into a brick mill with room to grow.</p>
+                            </li>
+                            <li class="milestone reveal">
+                                <span class="year">2025</span>
+                                <h3>Wholesale</h3>
+                                <p>Fourteen caf&eacute;s now serve on our plates.</p>
+                            </li>
+                            <li class="milestone is-now reveal">
+                                <span class="year">2026</span>
+                                <h3>A second kiln</h3>
+                                <p>A founding cohort of forty makers joins.</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">04</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2 is-current" data-goto="2" aria-current="true">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 5: THE CRAFT (numbered list + clipped image) === -->
+            <section class="slide craft-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content craft-layout">
+                        <div class="craft-copy">
+                            <p class="eyebrow reveal">The craft</p>
+                            <h2 class="reveal">From <span class="ital">mud</span> to mug,<br>in five steps.</h2>
+                            <ol class="steps stagger-late">
+                                <li class="reveal"><span class="step-title">Wedge</span><span class="step-desc">Knead out every air bubble, or the kiln will find it.</span></li>
+                                <li class="reveal"><span class="step-title">Throw</span><span class="step-desc">Centre the clay and pull the walls up on the wheel.</span></li>
+                                <li class="reveal"><span class="step-title">Trim</span><span class="step-desc">Turn it leather-hard and carve a clean foot ring.</span></li>
+                                <li class="reveal"><span class="step-title">Glaze</span><span class="step-desc">Dip in slip and oxide; the kiln finishes the sentence.</span></li>
+                                <li class="reveal"><span class="step-title">Fire</span><span class="step-desc">Thirteen hours to 1,280 &deg;C, salt thrown in at the peak.</span></li>
+                            </ol>
+                        </div>
+                        <div class="craft-image reveal-scale">
+                            <img src="assets/glaze-tests.webp" alt="Glaze test tiles in celadon and deep blue on a studio shelf" class="slide-image photo clip-img">
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">05</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3 is-current" data-goto="4" aria-current="true">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 6: FOUR PROMISES (auto-numbered with CSS counter) === -->
+            <section class="slide promises-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content promises-layout">
+                        <div class="slide-head">
+                            <p class="eyebrow reveal">What we promise</p>
+                            <h2 class="reveal">Four promises on <span class="ital">every</span> pot</h2>
+                        </div>
+                        <ul class="promises stagger-late">
+                            <li class="promise reveal">
+                                <h3>Dug nearby</h3>
+                                <p>Our clay comes from a river bank thirty miles from the kiln.</p>
+                            </li>
+                            <li class="promise reveal">
+                                <h3>Fired clean</h3>
+                                <p>Lead-free, food-safe glazes, tested on every batch.</p>
+                            </li>
+                            <li class="promise reveal">
+                                <h3>Made to last</h3>
+                                <p>Dishwasher, oven, microwave. If it chips, we repair it free.</p>
+                            </li>
+                            <li class="promise reveal">
+                                <h3>Signed by hand</h3>
+                                <p>Each piece carries its maker&rsquo;s mark on the foot.</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">06</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3 is-current" data-goto="4" aria-current="true">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 7: THE FIRING (full-bleed background image with text overlay) === -->
+            <section class="slide slide--bleed">
+                <div class="bleed-copy">
+                    <p class="eyebrow reveal">The firing</p>
+                    <h2 class="reveal">Thirteen hours in the <span class="ital">fire.</span></h2>
+                    <p class="reveal">Salt goes in at 1,280 &deg;C, and the glaze we get is never quite the same twice.</p>
+                </div>
+                <p class="photo-credit">Kiln No. 2 &middot; Tidewater Mill &middot; 1:40 a.m.</p>
+                <span class="page-no page-no--float">07</span>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3 is-current" data-goto="4" aria-current="true">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 8: IN THEIR WORDS (pull quote + circular crop) === -->
+            <section class="slide quote-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content quote-layout">
+                        <figure class="portrait reveal-scale">
+                            <img src="assets/studio-kiln.jpg" alt="Portrait of Elena Marsh, owner of Lantern Caf&eacute;" class="slide-image photo">
+                        </figure>
+                        <div class="quote-copy">
+                            <p class="eyebrow reveal">In their words</p>
+                            <blockquote class="pull-quote reveal">
+                                <p>Guests ask about the cups before they ask about the coffee.&rdquo;</p>
+                                <footer class="quote-by"><strong>Elena Marsh</strong>Owner, Lantern Caf&eacute; &middot; stockist since 2024</footer>
+                            </blockquote>
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">08</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4 is-current" data-goto="7" aria-current="true">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 9: MEMBERSHIP (pricing comparison cards, a reading slide) === -->
+            <section class="slide pricing-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content pricing-layout">
+                        <div class="slide-head">
+                            <p class="eyebrow reveal">Membership</p>
+                            <h2 class="reveal">Pick your <span class="ital">place</span> at the wheel</h2>
+                        </div>
+                        <div class="pricing stagger-late">
+                            <article class="plan reveal">
+                                <span class="tier">Drop-in</span>
+                                <p class="price">$28<small>/ session</small></p>
+                                <p class="blurb">Try the wheel with a teacher beside you.</p>
+                                <hr>
+                                <ul class="features">
+                                    <li>Two-hour wheel session</li>
+                                    <li>Clay &amp; tools provided</li>
+                                    <li>Firing billed per piece</li>
+                                    <li>Book any weekday</li>
+                                </ul>
+                            </article>
+                            <article class="plan plan--featured reveal">
+                                <span class="plan-badge">Most popular</span>
+                                <span class="tier">Member</span>
+                                <p class="price">$185<small>/ month</small></p>
+                                <p class="blurb">Your own key, your own shelf, your own pace.</p>
+                                <hr>
+                                <ul class="features">
+                                    <li>Unlimited open-studio hours</li>
+                                    <li>25 lb of clay each month</li>
+                                    <li>Two firings included</li>
+                                    <li>15% off classes &amp; shop</li>
+                                </ul>
+                            </article>
+                            <article class="plan reveal">
+                                <span class="tier">Resident</span>
+                                <p class="price">$420<small>/ month</small></p>
+                                <p class="blurb">A private wheel and a place in our shop.</p>
+                                <hr>
+                                <ul class="features">
+                                    <li>Reserved wheel &amp; 6 ft shelf</li>
+                                    <li>Unlimited clay &amp; firings</li>
+                                    <li>Sell through our shop</li>
+                                    <li>Name on the kiln wall</li>
+                                </ul>
+                            </article>
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">09</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4 is-current" data-goto="7" aria-current="true">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 10: THE ASK (big numeral + call to action) === -->
+            <section class="slide ask-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content ask-layout">
+                        <div class="ask-number reveal-scale">
+                            <strong>40</strong>
+                            <span>founding seats</span>
+                        </div>
+                        <div class="ask-copy">
+                            <p class="eyebrow reveal">Founding cohort &middot; opens Nov 1</p>
+                            <h2 class="reveal">Forty seats at the wheel, <span class="ital">locked in</span> for life.</h2>
+                            <p class="note reveal">Reserve before 30 November and your member rate never goes up.</p>
+                            <p class="cta reveal">Reserve a seat &rarr; hello@saltkiln.example</p>
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">10</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4 is-current" data-goto="7" aria-current="true">Join</button>
+                    <button type="button" class="tab tab-5" data-goto="10">Visit</button>
+                </nav>
+            </section>
+
+            <!-- === SLIDE 11: CLOSING === -->
+            <section class="slide closing-slide">
+                <div class="paper">
+                    <div class="binder-holes" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <div class="slide-content closing-layout">
+                        <div class="closing-copy">
+                            <p class="eyebrow reveal">Thank you</p>
+                            <h1 class="reveal">Come make<br>something<br><span class="ital">with us.</span></h1>
+                        </div>
+                        <div class="closing-side">
+                            <div class="closing-mark reveal-scale">
+                                <img src="assets/saltkiln-mark.png" alt="Saltkiln Ceramics mark" class="slide-image logo-sm">
+                            </div>
+                            <dl class="contact reveal">
+                                <div><dt>Visit</dt><dd>Tidewater Mill, Unit 4<br>18 Quarry Lane, Rockport</dd></div>
+                                <div><dt>Write</dt><dd>hello@saltkiln.example</dd></div>
+                                <div><dt>Hours</dt><dd>Tuesday to Sunday, 10 to 6</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+                    <footer class="paper-footer"><span>Saltkiln Ceramics &middot; Studio pitch 2026</span><span class="page-no">11</span></footer>
+                </div>
+                <nav class="tabs" aria-label="Deck sections">
+                    <button type="button" class="tab tab-1" data-goto="0">Hello</button>
+                    <button type="button" class="tab tab-2" data-goto="2">Our story</button>
+                    <button type="button" class="tab tab-3" data-goto="4">Craft</button>
+                    <button type="button" class="tab tab-4" data-goto="7">Join</button>
+                    <button type="button" class="tab tab-5 is-current" data-goto="10" aria-current="true">Visit</button>
+                </nav>
+            </section>
+
+        </main>
+
+        <!-- Progress bar + page count live outside the stage -->
+        <div class="progress-track" aria-hidden="true"><i id="progressBar"></i></div>
+        <div class="deck-controls" role="group" aria-label="Slide controls">
+            <button class="nav-btn" id="prevBtn" type="button" aria-label="Previous slide">&larr;</button>
+            <span class="slide-counter" id="slideCounter" aria-live="polite">01 / 11</span>
+            <button class="nav-btn" id="nextBtn" type="button" aria-label="Next slide">&rarr;</button>
+        </div>
+    </div>
+
+    <!-- Inline editing: hover the top-left corner or press E -->
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+    <div class="edit-toast" id="editToast" role="status" aria-live="polite"></div>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           Stage scaling, keyboard / touch / wheel navigation,
+           section tabs, progress bar and the slide counter
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = Array.from(document.querySelectorAll('.slide'));
+                this.currentSlide = 0;
+                this.stage = document.getElementById('deckStage');
+                this.counter = document.getElementById('slideCounter');
+                this.progress = document.getElementById('progressBar');
+                this.wheelLocked = false;
+
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupTabs();
+                this.setupControls();
+
+                const fromHash = parseInt(window.location.hash.replace('#', ''), 10);
+                this.showSlide(Number.isNaN(fromHash) ? 0 : fromHash - 1);
+            }
+
+            /* Scale the 1920×1080 stage uniformly to the window (letterbox / pillarbox) */
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            /* Navigation is paused while the inline editor is typing */
+            isTyping(target) {
+                return document.body.classList.contains('editing') || Boolean(target && target.isContentEditable);
+            }
+
+            /* Arrow keys, Space, Page Up/Down, Home/End */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.isTyping(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+                    switch (e.key) {
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case 'PageDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.next();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prev();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.showSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.showSlide(this.slides.length - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* Touch / swipe support for mobile */
+            setupTouchNav() {
+                let startX = 0;
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startX = e.changedTouches[0].clientX;
+                    startY = e.changedTouches[0].clientY;
+                }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const dx = e.changedTouches[0].clientX - startX;
+                    const dy = e.changedTouches[0].clientY - startY;
+                    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+                        if (dx < 0) this.next(); else this.prev();
+                    }
+                }, { passive: true });
+            }
+
+            /* Mouse wheel navigation (throttled so one flick = one slide) */
+            setupWheelNav() {
+                window.addEventListener('wheel', (e) => {
+                    if (this.wheelLocked || this.isTyping(e.target) || Math.abs(e.deltaY) < 30) return;
+                    this.wheelLocked = true;
+                    if (e.deltaY > 0) this.next(); else this.prev();
+                    setTimeout(() => { this.wheelLocked = false; }, 700);
+                }, { passive: true });
+            }
+
+            /* Section tabs jump to the first slide of their section */
+            setupTabs() {
+                document.querySelectorAll('.tab').forEach((tab) => {
+                    tab.addEventListener('click', () => {
+                        this.showSlide(parseInt(tab.dataset.goto, 10));
+                    });
+                });
+            }
+
+            /* Prev / next buttons in the deck controls */
+            setupControls() {
+                document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+                document.getElementById('nextBtn').addEventListener('click', () => this.next());
+            }
+
+            next() { this.showSlide(this.currentSlide + 1); }
+            prev() { this.showSlide(this.currentSlide - 1); }
+
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === this.currentSlide);
+                    slide.classList.toggle('visible', i === this.currentSlide);
+                });
+
+                const total = this.slides.length;
+                const pad = (n) => String(n).padStart(2, '0');
+                this.counter.textContent = `${pad(this.currentSlide + 1)} / ${pad(total)}`;
+                this.progress.style.setProperty('--p', (this.currentSlide + 1) / total);
+                try { history.replaceState(null, '', '#' + (this.currentSlide + 1)); }
+                catch (err) { /* some browsers block history updates on file:// pages */ }
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           Press E (or hover the top-left corner) to toggle edit mode,
+           click any text to change it, Ctrl+S saves a copy of this file.
+           Edits auto-save to localStorage and are restored on reload.
+           =========================================== */
+        const EDITABLE_SELECTOR = [
+            '.slide h1', '.slide h2', '.slide h3', '.slide p', '.slide figcaption',
+            '.slide .quote-by', '.slide dt', '.slide dd', '.slide .step-title', '.slide .step-desc',
+            '.slide .features li', '.slide .meta-row li'
+        ].join(', ');
+
+        class SlideEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'saltkiln-pitch-edits:' + window.location.pathname;
+                this.toggleBtn = document.getElementById('editToggle');
+                this.toast = document.getElementById('editToast');
+                this.nodes = Array.from(document.querySelectorAll(EDITABLE_SELECTOR));
+                this.dirty = new Set();
+                this.saveTimer = null;
+                this.toastTimer = null;
+
+                this.restore();
+                this.nodes.forEach((node, i) => {
+                    node.addEventListener('input', () => {
+                        this.dirty.add(i);
+                        clearTimeout(this.saveTimer);
+                        this.saveTimer = setTimeout(() => this.save(), 400);
+                    });
+                });
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing', this.isActive);
+                this.toggleBtn.classList.toggle('active', this.isActive);
+                this.nodes.forEach((node) => {
+                    if (this.isActive) node.setAttribute('contenteditable', 'true');
+                    else node.removeAttribute('contenteditable');
+                });
+                if (!this.isActive) this.save();
+                this.showToast(this.isActive
+                    ? 'Edit mode on: click any text, Ctrl+S saves a copy, E exits'
+                    : 'Edit mode off');
+            }
+
+            /* Auto-save: keep only the nodes that were changed */
+            save() {
+                const data = {};
+                this.dirty.forEach((i) => { data[i] = this.nodes[i].innerHTML; });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); }
+                catch (err) { /* storage unavailable (private mode) — ignore */ }
+            }
+
+            restore() {
+                try {
+                    const saved = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+                    Object.keys(saved).forEach((i) => {
+                        if (this.nodes[i]) {
+                            this.nodes[i].innerHTML = saved[i];
+                            this.dirty.add(Number(i));
+                        }
+                    });
+                } catch (err) { /* nothing stored yet */ }
+            }
+
+            /* Ctrl+S: download a clean copy of this presentation */
+            exportHTML() {
+                this.save();
+                const clone = document.documentElement.cloneNode(true);
+                clone.querySelectorAll('[contenteditable]').forEach((el) => el.removeAttribute('contenteditable'));
+                clone.querySelector('body').classList.remove('editing');
+                clone.querySelector('#editToggle').classList.remove('show', 'active');
+                clone.querySelector('#deckStage').removeAttribute('style');
+                clone.querySelectorAll('.slide').forEach((slide, i) => {
+                    slide.classList.toggle('active', i === 0);
+                    slide.classList.remove('visible');
+                });
+
+                const fileName = window.location.pathname.split('/').pop() || 'presentation.html';
+                const blob = new Blob(['<!DOCTYPE html>\n' + clone.outerHTML], { type: 'text/html' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                this.showToast('Saved ' + fileName);
+            }
+
+            showToast(message) {
+                this.toast.textContent = message;
+                this.toast.classList.add('show');
+                clearTimeout(this.toastTimer);
+                this.toastTimer = setTimeout(() => this.toast.classList.remove('show'), 2600);
+            }
+        }
+
+        /* ===========================================
+           INITIALISE
+           =========================================== */
+        const deck = new SlidePresentation();
+        const editor = new SlideEditor();
+
+        // 1. Click handler on the toggle button
+        document.getElementById('editToggle').addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 2. Hotzone hover with 400ms grace period
+        const hotzone = document.querySelector('.edit-hotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            editToggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+        editToggle.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+        });
+        editToggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => {
+                if (!editor.isActive) editToggle.classList.remove('show');
+            }, 400);
+        });
+
+        // 3. Hotzone direct click
+        hotzone.addEventListener('click', () => {
+            editor.toggleEditMode();
+        });
+
+        // 4. Keyboard shortcuts: E toggles editing (skipped while typing), Ctrl+S saves, Esc exits
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.ctrlKey && !e.metaKey && !e.target.getAttribute('contenteditable')) {
+                editor.toggleEditMode();
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                editor.exportHTML();
+            }
+            if (e.key === 'Escape' && editor.isActive) {
+                editor.toggleEditMode();
+            }
+        });
+    </script>
+</body>
+</html>

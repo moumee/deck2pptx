@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Regression deck</title>
+<style>
+  /* Each block reproduces something that once went wrong. System fonts only, so no network is needed. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #123456; font-family: Arial, sans-serif; }
+  .deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  .slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; visibility: hidden; opacity: 0; }
+  .slide.active, .slide.visible { visibility: visible; opacity: 1; }
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity .6s, transform .6s; }
+  .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+  .deck-controls { position: fixed; left: 50%; bottom: 20px; color: #fff; }
+
+  h1 { position: absolute; left: 80px; top: 60px; font-size: 80px; color: #fff; }
+
+  /* z-index:-1 on a child of a z-index:auto parent paints behind the parent */
+  .plate-card { position: absolute; left: 80px; top: 220px; width: 400px; height: 200px; background: #f4efe6; }
+  .plate-card::before { content: ""; position: absolute; inset: 12px -12px -12px 12px; background: #008f4d; z-index: -1; }
+
+  /* an inset hard shadow is a border */
+  .accent { position: absolute; left: 540px; top: 220px; width: 300px; height: 100px; background: #223344; box-shadow: inset 0 3px 0 #00ffcc; }
+
+  /* text past an overflow clip is not visible, so it must not be written */
+  .marquee { position: absolute; left: 900px; top: 220px; width: 200px; height: 40px; overflow: hidden; white-space: nowrap; font-size: 24px; color: #fff; }
+
+  .rotated { position: absolute; left: 1200px; top: 220px; width: 200px; padding: 8px; background: #fff; transform: rotate(-4deg); font-size: 24px; }
+
+  /* uppercase stays a formatting choice, not a change to the words */
+  .label { position: absolute; left: 80px; top: 480px; font-size: 24px; letter-spacing: 3px; text-transform: uppercase; color: #fff; }
+
+  ul { position: absolute; left: 120px; top: 540px; width: 600px; color: #fff; font-size: 28px; line-height: 40px; }
+
+  table { position: absolute; left: 800px; top: 540px; border-collapse: collapse; color: #fff; font-size: 24px; }
+  th, td { border-bottom: 1px solid #fff; padding: 8px 16px; text-align: left; }
+  td.best::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: #00ffcc; }
+
+  .solid { background: #fdf6e3; }
+  .solid p { position: absolute; left: 80px; top: 80px; width: 500px; font-size: 32px; line-height: 44px; color: #222; }
+  .ring { position: absolute; left: 800px; top: 80px; width: 200px; height: 200px; border-radius: 50%; background: #c33; box-shadow: 0 0 0 8px #fff, 0 0 0 10px #222; }
+  .tinted { position: absolute; left: 1100px; top: 80px; width: 200px; height: 200px; background: #cc4422; filter: saturate(0.5) brightness(0.8); }
+  .arrow { position: absolute; left: 1500px; top: 220px; width: 0; height: 0; border-left: 40px solid #ff00aa; border-top: 20px solid transparent; border-bottom: 20px solid transparent; }
+  .sourced { position: absolute; left: 1100px; top: 340px; width: 700px; font-size: 24px; line-height: 32px; color: #fff; }
+  .centred { position: absolute; left: 80px; top: 800px; width: 700px; text-align: center; font-size: 40px; line-height: 64px; color: #fff; }
+  .pill { display: inline-block; padding: 0 16px; background: #fd3; color: #111; border-radius: 30px; }
+  .folio { position: absolute; left: 1500px; top: 300px; font-size: 24px; color: #fff; }
+  .folio i { padding: 0 20px; margin: 0 4px; background: #ff0; }
+  .linked { position: absolute; left: 1200px; top: 480px; font-size: 24px; color: #fff; }
+
+  /* a small inline margin is too narrow to split the line, but it is still a gap */
+  .stat { position: absolute; left: 1500px; top: 540px; font-size: 40px; color: #fff; }
+  .stat small { margin-left: 8px; font-size: 24px; }
+
+  /* a full-slide layer on top must not sit over the text: it would take every click */
+  .overlaid { background: #ddeedd; }
+  .overlaid::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle, transparent 50%, rgba(0, 0, 0, 0.4)); }
+  .overlaid .panel { position: absolute; left: 200px; top: 200px; width: 800px; height: 500px; background: #ffffff; }
+  .overlaid p { position: absolute; left: 240px; top: 240px; width: 600px; font-size: 40px; color: #222; }
+</style>
+</head>
+<body>
+  <div class="deck-controls">1 / 2</div>
+  <main class="deck-stage">
+    <section class="slide active visible">
+      <h1 class="reveal">Regression deck</h1>
+      <div class="plate-card"></div>
+      <div class="accent"></div>
+      <div class="marquee">Visible words then a long tail that stays hidden forever and ever</div>
+      <div class="rotated">Tilted note</div>
+      <div class="arrow"></div>
+      <div class="folio"><span>01</span><i></i><span>08</span></div>
+      <p class="sourced">
+        A paragraph broken across lines
+        in the source, the way most HTML is written.
+      </p>
+      <p class="centred">First line before an inline <span class="pill">pill</span> and after it, and then a line that wraps below.</p>
+      <div class="label">Mixed Case Label</div>
+      <a class="linked" href="https://example.com/more">A link &amp; an ampersand</a>
+      <div class="stat">731<small>km</small></div>
+      <ul>
+        <li>First bullet</li>
+        <li>Second bullet that is here</li>
+        <li>Third bullet</li>
+      </ul>
+      <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Latency</td><td class="best">9 ms</td></tr>
+        <tr><td>Cost</td><td>$0.94</td></tr>
+      </table>
+      <!-- notes: Remember to mention the second bullet. -->
+    </section>
+    <section class="slide solid">
+      <p>A paragraph long enough to wrap over more than one line inside its box, so that natural wrapping gets tested.</p>
+      <div class="ring"></div>
+      <div class="tinted"></div>
+    </section>
+    <section class="slide overlaid">
+      <div class="panel"></div>
+      <p>Text under a vignette</p>
+    </section>
+  </main>
+</body>
+</html>
