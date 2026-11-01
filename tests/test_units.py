@@ -3,6 +3,7 @@ import io
 import struct
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -10,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from deck2pptx.css import (COLOR_FILTER_ONLY, Color, apply_color_filters, parse_clip_polygon, parse_color, parse_font_stack,
                            parse_gradient, parse_shadows, resolve_radii, split_top)
-from deck2pptx.fonts import EmbeddedFace, _flatten_kerning, common_cjk, parse_font_faces, to_eot, weight_class
+from deck2pptx.fonts import EmbeddedFace, _ascent_ratio, _flatten_kerning, common_cjk, parse_font_faces, to_eot, weight_class
 from deck2pptx.ooxml import gradient_fill, path_geom, rounded_path, text_escape
 from deck2pptx.slides import (_dedupe, _merge_runs, blur_for_ppt, css_triangle, fit_wrap, merge_lists, object_position, slice_gradient,
                              split_ambiguous, split_shadows, wrap_bounds)
@@ -164,6 +165,17 @@ class TestTextModel:
     ])
     def test_natural_ascent(self, name, a, d, measured):
         assert natural_ascent(a, d) == pytest.approx(measured, abs=0.004)
+
+    @pytest.mark.parametrize("name,typo,ascent,descent,gap,win,measured", [
+        ("Black Han Sans", True, 790, 210, 250, (810, 210), 0.998), ("Do Hyeon", True, 800, 200, 250, (800, 200), 1.010),
+        ("Sunflower", True, 782, 218, 250, (810, 235), 0.990), ("Song Myung", True, 848, 152, 250, (848, 235), 1.058),
+        ("Gaegu", True, 760, 240, 250, (762, 242), 0.973), ("Space Grotesk", True, 984, 292, 0, (1150, 292), 0.925),
+        ("Nanum Gothic", False, 856, 144, 250, (885, 198), 0.980), ("Noto Sans KR", False, 880, 120, 0, (1160, 288), 0.960),
+    ])
+    def test_line_gap_counts_as_ascent_only_under_typo_metrics(self, name, typo, ascent, descent, gap, win, measured):
+        os2 = SimpleNamespace(fsSelection=0x80 if typo else 0, sTypoAscender=ascent, sTypoDescender=-descent, sTypoLineGap=gap,
+                              usWinAscent=win[0], usWinDescent=win[1])
+        assert _ascent_ratio({"OS/2": os2, "head": SimpleNamespace(unitsPerEm=1000)}) == pytest.approx(measured, abs=0.006)
 
     @pytest.mark.parametrize("a,percent,measured", [
         (0.925, 50, 0.451), (0.925, 80, 0.721), (0.925, 95, 0.864), (0.925, 120, 1.083), (0.925, 200, 1.803),   # Space Grotesk

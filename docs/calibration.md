@@ -33,7 +33,39 @@ It matches on the `typeface` in `<p:font>` and the family name in the EOT header
 
 **The EOT header must tell the truth.** A bold font declared as weight 400 is rejected and replaced with a fallback, with no error. So a family that lacks a weight or slant is embedded as what it is, and the run asks for synthetic bold or italic, which is what Chrome does.
 
-After a save in PowerPoint, the embedded fonts survive and glyph positions move by exactly 0.0 px.
+## What a save keeps
+
+People edit these files, so what PowerPoint writes back matters as much as what it reads. Two precautions apply to every measurement here. Test with a font the machine does not have, because a font PowerPoint can find installed behaves differently, as described below. And run each step in a new process, because PowerPoint keeps the fonts it has loaded for as long as it runs. An early version of this page said embedded fonts simply survive a save, which held only for the Latin fonts it was tested with.
+
+**Fonts.** On save, PowerPoint re-embeds only the fonts it counts as used, and it counts a font only when it is named as a Latin font:
+
+| Where the font is named | Kept on save |
+|---|---|
+| `<a:ea>` on every run that uses it | **No.** It is dropped, and the text falls back to Malgun Gothic |
+| `<a:cs>` or `<a:sym>` on those runs | No |
+| `<a:ea>` in the theme | No |
+| `<a:latin>` on one run | Yes, with every slot of the family |
+| `<a:latin>` on an end-of-paragraph mark, with no characters | Yes |
+| `<a:latin>` on level 9 of the master's `otherStyle` | No |
+| `<a:latin>` on levels 6 to 9 of the master's `bodyStyle` | **Yes** |
+| `<a:latin>` on level 9 of `defaultTextStyle` | Yes |
+
+Changing `charset` in `<p:font>`, in the EOT header or on the runs makes no difference.
+
+A Korean font usually sits behind a Latin one, as in `'Space Grotesk', 'Noto Sans KR'`, which puts it in `<a:ea>` and nowhere else. It would disappear the first time anyone saved the file. So such fonts are named on outline levels that no text reaches. That draws nothing, and editing a slide cannot remove it, which a mention on a slide could not promise. Tested with a Korean font under a name no machine has, through two saves with an edit:
+
+| | Without | With |
+|---|---|---|
+| Font after the saves | Gone | Bytes unchanged |
+| Fonts in PowerPoint's PDF | Malgun Gothic, Calibri | The embedded fonts only |
+
+**Fonts the machine has.** A used font that is not installed goes through any number of saves unchanged. If it is installed, PowerPoint replaces the embedded copy with one made from the installed file: EOT v2.2, compressed. From a variable font, every weight gets the same data, declared as weight 100. On a PC with Noto Sans KR installed, three faces went from 570 KB to 2.85 MB each and the file from 3.7 MB to 14 MB. What such a file looks like on a machine without the font has not been measured, since that takes uninstalling it. Renaming the font to hide the installed copy stops it loading, which proves nothing. `update` puts the original fonts back.
+
+**Slide identity.** `<p14:creationId>` in `<p:cSld>` is kept by a save and a move. A duplicate gets a new one and a new `sldId`, and so does a new slide. That makes it a better mark than a tag on the slide, which a duplicate would inherit.
+
+**Custom properties** survive, including a value of 2,400 characters, as do `customXml` parts. Document Inspector can remove them, so a file without a manifest has to keep working.
+
+**New slides** have no `<p:bg>`. A slide this program writes always has one, and a duplicate keeps it, which is one reason a background is the first thing `designed_reason` looks at.
 
 ## Line height
 
@@ -47,7 +79,18 @@ The font only decides where the baseline falls inside that 1.2 em:
 a = 1.2 × A / (A + D)
 ```
 
-where (A, D) are the typo metrics if the font sets `USE_TYPO_METRICS` (OS/2 fsSelection bit 7), and the win metrics otherwise. hhea is not used.
+where (A, D) are the win metrics, unless the font sets `USE_TYPO_METRICS` (OS/2 fsSelection bit 7). Then they are the typo metrics, with the typo line gap added to the ascent: A = `sTypoAscender` + `sTypoLineGap`. hhea is not used.
+
+The gap is easy to miss, because most Latin web fonts have none. Many Korean Google Fonts have 0.25 em, and leaving it out puts their text 0.05 em too low, which is 11 px on a 190 px title. Measured at 40 px, in em:
+
+| Font | Typo line gap | a without it | a with it | Measured |
+|---|---|---|---|---|
+| Black Han Sans | 0.25 | 0.948 | 0.998 | 0.998 |
+| Do Hyeon, Jua | 0.25 | 0.960 | 1.008 | 1.010 |
+| Sunflower | 0.25 | 0.938 | 0.991 | 0.990 |
+| Song Myung | 0.25 | 1.018 | 1.054 | 1.058 |
+| Gaegu | 0.25 | 0.912 | 0.970 | 0.973 |
+| Space Grotesk | 0 | 0.925 | 0.925 | 0.925 |
 
 `spcPct` and `spcPts` turn out to be one mechanism. Both set a line height L in em, and the first baseline below the top of the box follows from L alone:
 
@@ -136,6 +179,8 @@ Locking is therefore no solution. Overlays go into the slide background, and lar
 
 ## Other small facts
 
+- `Presentation.Export` writes a picture for hidden slides, but a PDF has no page for them, so the two number slides differently.
+- PowerPoint opens a package holding parts nothing refers to, with no complaint, and removes them on its next save. Replacing a slide leaves its old pictures and charts behind in that state.
 - `<a:effectLst>` requires `innerShdw` before `outerShdw`. PowerPoint tolerates the wrong order, the schema does not. `tests/validate` runs Microsoft's Open XML SDK validator.
 - In text tagged as Korean, Japanese or Chinese, PowerPoint sends East Asian ambiguous punctuation (quotes, middle dots, arrows) to the CJK font, where it is wider than in Chrome. Those characters get their own Latin-tagged run.
 - `cap="all"` is the exact equivalent of `text-transform: uppercase` and keeps the original case in the file.

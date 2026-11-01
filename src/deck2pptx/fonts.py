@@ -201,6 +201,7 @@ class FontBook:
         self.log = log
         self.warnings: list[str] = []
         self.usage: dict[tuple, set[str]] = {}
+        self.keep_text = ""     # text outside this conversion that a subset still has to cover
         self._loaded: dict[tuple, tuple[TTFont, bytes, str] | None] = {}
         self._cmaps: dict[tuple, set[int]] = {}
         self._pairs: set[str] = set()
@@ -533,9 +534,9 @@ class FontBook:
         return out
 
     def _subset(self, font: TTFont, used: set[str]) -> TTFont:
-        keep = {ord(c) for c in used}
+        keep = {ord(c) for c in used} | {ord(c) for c in self.keep_text}
         if self.subset_mode == "common":
-            keep |= common_cjk("".join(self._pairs))
+            keep |= common_cjk("".join(self._pairs) + self.keep_text)
         opts = ft_subset.Options()
         opts.layout_features = []
         opts.hinting = False
@@ -559,7 +560,8 @@ def _ascent_ratio(font: TTFont) -> float:
     os2 = font["OS/2"]
     upem = font["head"].unitsPerEm
     if os2.fsSelection & 0x80:
-        a, d = os2.sTypoAscender, -os2.sTypoDescender
+        # PowerPoint puts the line gap above the ascent. Many Korean fonts have a gap of 0.25 em, which moves text 0.05 em.
+        a, d = os2.sTypoAscender + os2.sTypoLineGap, -os2.sTypoDescender
     else:
         a, d = os2.usWinAscent, os2.usWinDescent
     return natural_ascent(a / upem, d / upem)

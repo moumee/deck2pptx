@@ -1227,7 +1227,8 @@
       H.slides = findSlides();
       const ds = document.querySelector('deck-stage');
       if (ds) { ds.setAttribute('noscale', ''); hideShadowChrome(ds); }
-      return { count: H.slides.length, title: document.title, lang: document.documentElement.lang || '', stage: !!ds };
+      return { count: H.slides.length, title: document.title, lang: document.documentElement.lang || '', stage: !!ds,
+               marks: H.slides.map(s => s.getAttribute('data-d2p-slide') || '') };
     },
 
     shownIndex() {

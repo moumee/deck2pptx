@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "deck2pptx",
-      "description": "Convert HTML slide decks into editable PowerPoint files that keep the same design: real text, shapes, tables and embedded fonts.",
+      "description": "Editable PowerPoint files that keep a deck's design: new decks through frontend-slides in one step, HTML decks converted, and rough slides added later brought into the design.",
       "source": "./",
       "category": "productivity",
       "tags": ["powerpoint", "pptx", "slides", "presentations", "html"]

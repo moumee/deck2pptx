@@ -1,4 +1,4 @@
-"""Re-measures PowerPoint's text layout and compares it with textmodel.py. Needs PowerPoint for Windows.
+"""Re-measures what the converter assumes about PowerPoint. Needs PowerPoint for Windows.
 
     python tests/calibrate.py [work_dir]
 
@@ -7,10 +7,13 @@ Exit status 1 means PowerPoint no longer behaves as the model says.
 from __future__ import annotations
 
 import ctypes
+import dataclasses
 import io
 import re
+import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -24,10 +27,12 @@ from lxml import etree
 from deck2pptx import ooxml as X
 from deck2pptx.fonts import UA_STATIC, EmbeddedFace, _ascent_ratio, _download, _flatten_kerning, _save, _set_kern_table
 from deck2pptx.textmodel import NATURAL_LINE, first_baseline, first_baseline_exact
+from deck2pptx.update import Package
 from deck2pptx.verify import render_powerpoint
-from deck2pptx.writer import add_blank_slide, finalize, new_presentation
+from deck2pptx.writer import CUSTOM_PART, add_blank_slide, finalize, new_presentation, read_manifest, stamp_slide
 
-FONTS = [("Space Grotesk", 400), ("Bebas Neue", 400), ("Shrikhand", 400), ("Playfair Display", 700), ("Press Start 2P", 400), ("Noto Sans KR", 700)]
+FONTS = [("Space Grotesk", 400), ("Bebas Neue", 400), ("Shrikhand", 400), ("Playfair Display", 700), ("Press Start 2P", 400), ("Black Han Sans", 400),
+         ("Noto Sans KR", 700)]
 PERCENT = [50, 60, 75, 80, 90, 95, 100, 105, 120, 150, 200]
 EXACT = [0.7, 0.9, 1.0, 1.1, 1.3, 1.5, 1.8]
 SIZE = 40
@@ -80,7 +85,72 @@ def origins(pdf: Path) -> list[list[tuple[float, float]]]:
     return out
 
 
+def save_in_powerpoint(src: str, dst: str) -> None:
+    """One save with a duplicate and a new slide, as someone editing the file would make."""
+    import pythoncom
+    import win32com.client
+    pythoncom.CoInitialize()
+    app = win32com.client.DispatchEx("PowerPoint.Application")
+    pres = None
+    try:
+        pres = app.Presentations.Open(src, False, False, 0)
+        pres.Slides(1).Duplicate()
+        pres.Slides.AddSlide(pres.Slides.Count + 1, pres.SlideMaster.CustomLayouts(1))
+        pres.SaveAs(dst, 24)
+    finally:
+        if pres is not None:
+            pres.Close()
+        if app.Presentations.Count == 0:
+            app.Quit()
+
+
+def check_save(work: Path, faces: list[EmbeddedFace]) -> bool:
+    """What survives someone saving the file. The fonts need names no machine has, because a font PowerPoint can find
+    installed is replaced by that copy, and each save needs its own process, because PowerPoint keeps loaded fonts."""
+    latin, cjk = faces[0], dataclasses.replace(faces[-1], typeface="Calibrate Behind Latin")
+    prs = new_presentation(1920, 1080)
+    slide = add_blank_slide(prs, False)
+    xml = box(10, 40, 40, latin.typeface, SIZE, ["AB"], "").replace(f'<a:ea typeface="{latin.typeface}"/>', f'<a:ea typeface="{cjk.typeface}"/>')
+    for child in etree.fromstring(f"<root {X.NSDECL}>{xml}</root>"):
+        slide.shapes._spTree.append(child)
+    stamp = stamp_slide(slide)
+    raw_path, kept = work / "save-raw.pptx", work / "save-anchored.pptx"
+    prs.save(raw_path)
+    finalize(raw_path, kept, [latin, cjk], manifest={"v": 1, "html": "x.html", "fonts": [cjk.typeface], "slides": [stamp]})
+    bare = work / "save-bare.pptx"
+    master = "ppt/slideMasters/slideMaster1.xml"
+    with zipfile.ZipFile(kept) as zin, zipfile.ZipFile(bare, "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            zout.writestr(info, data.replace(f'typeface="{cjk.typeface}"'.encode(), b'typeface="+mn-lt"') if info.filename == master else data)
+    results = {}
+    for name, path in (("anchored", kept), ("bare", bare)):
+        saved = work / f"save-{name}.saved.pptx"
+        subprocess.run([sys.executable, __file__, "--save", str(path), str(saved)], check=True, timeout=180)
+        results[name] = Package(saved)
+    slides = results["anchored"].slides()
+    source, after = Package(kept), results["anchored"]
+
+    def font_bytes(pkg: Package) -> bytes:
+        return pkg.parts[pkg.fonts()[cjk.typeface][cjk.slot]]
+    checks = {
+        "a font reached only through <a:ea> is dropped on save": cjk.typeface not in results["bare"].fonts(),
+        "naming it on an unused master level keeps it": cjk.typeface in after.fonts(),
+        "a kept font keeps its bytes": cjk.typeface in after.fonts() and font_bytes(after) == font_bytes(source),
+        "the slide keeps its creationId": slides[0].creation == stamp,
+        "a duplicate gets a new creationId and sldId": slides[1].creation not in (None, stamp) and slides[1].id != slides[0].id,
+        "a new slide gets its own": slides[2].creation not in (None, stamp),
+        "the manifest survives": (read_manifest(results["anchored"].parts.get(CUSTOM_PART)) or {}).get("slides") == [stamp],
+    }
+    for label, ok in checks.items():
+        print(f"  {'ok   ' if ok else 'DRIFT'} {label}")
+    return all(checks.values())
+
+
 def main() -> int:
+    if sys.argv[1:2] == ["--save"]:
+        save_in_powerpoint(sys.argv[2], sys.argv[3])
+        return 0
     work = Path(sys.argv[1] if len(sys.argv) > 1 else tempfile.mkdtemp(prefix="d2p-calibrate"))
     work.mkdir(parents=True, exist_ok=True)
     faces = [face_for(f"{name} {weight}", google_ttf(name, weight)) for name, weight in FONTS]
@@ -135,6 +205,8 @@ def main() -> int:
         worst_kern = max(worst_kern, abs(measured - expected))
     ok = worst_first <= EM_TOLERANCE and worst_pitch <= EM_TOLERANCE and worst_kern <= KERN_TOLERANCE
     print(f"first baseline error {worst_first:.3f} em, line pitch error {worst_pitch:.3f} em, kerned width error {worst_kern:.2f} px at {KERN_SIZE} px")
+    print("what a save keeps:")
+    ok = check_save(work, faces) and ok
     print("model holds" if ok else "MODEL DRIFT: see docs/calibration.md")
     return 0 if ok else 1
 

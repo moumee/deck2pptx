@@ -9,8 +9,8 @@ The model:
 * The natural line height is exactly 1.2 em for every font; a font's own
   metrics do not change it.
 * A font only contributes the split of that 1.2 em around the baseline:
-  a = 1.2 * A / (A + D), with (A, D) from the typo metrics when the font sets
-  USE_TYPO_METRICS and from the win metrics otherwise.
+  a = 1.2 * A / (A + D), with (A, D) from the win metrics, or from the typo
+  metrics when the font sets USE_TYPO_METRICS, the line gap counting as ascent.
 * spcPct and spcPts are the same thing: both set a line height L, and the
   first baseline follows from L alone.
 """

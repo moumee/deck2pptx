@@ -4,6 +4,16 @@ Turn an HTML slide deck into a PowerPoint file that other people can edit, and t
 
 Made for decks from [frontend-slides](https://github.com/zarazhangrui/frontend-slides), and it works with any fixed-stage HTML deck. The output is not pictures of slides. Text is text, cards are shapes, tables are tables, and the fonts travel inside the file.
 
+In Claude Code, one command covers the whole life of a deck:
+
+```text
+/deck2pptx:deck2pptx quarterly review for the board     a new deck: frontend-slides, then the .pptx
+/deck2pptx:deck2pptx deck.html                          an HTML deck you already have
+/deck2pptx:deck2pptx deck.pptx                          rough slides you added in PowerPoint
+```
+
+The conversion itself is a program, and needs no AI:
+
 ```
 python scripts/run.py deck.html --verify
 ```
@@ -27,6 +37,35 @@ python scripts/run.py deck.html --verify
 
 Things PowerPoint has no equivalent for become pictures, and only those things: grain, radial and conic gradients, blurs, canvases. `convert.json` lists each one and the reason. Text is never in those pictures unless the element is skewed or 3D-transformed, and you get a warning when that happens.
 
+## Adding a slide later
+
+Add it in PowerPoint with no design at all: a title and some text is enough, and the Title and Content layout is there for this. Save, then give the file back:
+
+```text
+/deck2pptx:deck2pptx deck.pptx
+```
+
+Claude lays that slide out in the deck's design, in the deck's HTML, and the program converts it and puts it in place. The words stay yours: it can turn bullets into cards, but it adds nothing to what the slide says.
+
+| | |
+|---|---|
+| Your file | Never written to. The result is a new file |
+| Every other slide | Unchanged byte for byte, so edits people made in PowerPoint are safe, and the program prints how many parts of the file it left alone |
+| The replaced slide | Keeps its position, section, speaker notes, comments and transition. Entrance animations go, because the shapes they pointed at are gone |
+| A duplicate someone reworked | Recognised as designed, and left alone |
+| The HTML | Gains the new slide, so it stays the source of the design |
+| Fonts | Anything the slide needs is added to the file, and missing characters are added to fonts already there |
+
+Slides are recognised by a mark PowerPoint keeps on save and does not copy to duplicates. Older files have no record of their conversion, so new slides in those are recognised by having no background or colours of their own.
+
+Without Claude, the two mechanical halves are commands, and the design in between is up to you:
+
+```bash
+deck2pptx new-slides deck.pptx        # JSON: what is new, what it says, where it goes
+# add <section class="slide" data-d2p-slide="266"> ... </section> to the HTML
+deck2pptx update deck.pptx --html deck.html --verify
+```
+
 ## How close is it?
 
 Measured in PowerPoint for Windows against Chrome's rendering of the same deck, on 37 decks and 384 slides: 34 templates from [beautiful-html-templates](https://github.com/zarazhangrui/beautiful-html-templates) and 3 decks generated with frontend-slides, one of them in Korean.
@@ -34,15 +73,15 @@ Measured in PowerPoint for Windows against Chrome's rendering of the same deck, 
 | | |
 |---|---|
 | Decks converted | 37 of 37 |
-| Similarity at viewing scale (SSIM, 1.0 is identical) | 0.977 on average, 0.898 for the lowest deck |
+| Similarity at viewing scale (SSIM, 1.0 is identical) | 0.977 on average, 0.897 for the lowest deck |
 | Pixels visibly different | 1.3% on average, mostly text edge smoothing |
 | Text baseline position | 0.16 px typical, 99% within 1.4 px, worst 2.7 px |
 | Text left edge | 0.09 px typical, 99% within 1.0 px |
 | Lines that wrap differently | 31 of 5,358 (0.6%) |
 | Files passing Microsoft's Open XML schema validator | 37 of 37 |
-| File size | 0.6 MB typical, 11 MB largest |
+| File size | 0.7 MB typical, 11 MB largest |
 
-Across those decks that is 5,550 text boxes, 4,562 shapes, 4 tables and 5 pictures. Another 340 layers are rasterized, including slide backgrounds and textures.
+Across those decks that is 5,550 text boxes, 4,561 shapes, 4 tables and 5 pictures. Another 341 layers are rasterized, including slide backgrounds and textures.
 
 Three things to keep in mind when reading these numbers. Grain lowers the score without any visible change, because the two renderers don't place individual grain pixels identically: the lowest deck is the Korean one, which has grain on every slide. Another 1,262 lines are translucent or have effects, which PowerPoint's PDF draws as graphics, so they are compared by pixels only. And these are test decks, so run `--verify` on your own.
 
@@ -61,6 +100,13 @@ Then:
 
 ```text
 /deck2pptx:deck2pptx deck.html
+```
+
+Making new decks also needs frontend-slides, which is a separate plugin. Converting and adding slides do not:
+
+```text
+/plugin marketplace add zarazhangrui/frontend-slides
+/plugin install frontend-slides@frontend-slides
 ```
 
 ### Without AI
@@ -83,7 +129,7 @@ deck2pptx deck.html --verify
 
 No, and it is better that the conversion doesn't use it. The browser reports exactly where everything is, and the rest is translation, so a program does it the same way every time, for free, and cannot reword your slides.
 
-Claude adds one thing: judgement after the fact. The skill runs the same program, looks at the worst slides, and decides whether anything needs correcting. It is useful when a deck has something unusual, and optional otherwise.
+Claude adds design and judgement. It designs new decks through frontend-slides and lays out slides added later, then the same program converts them. After a conversion it looks at the worst slides and decides whether anything needs correcting, which is useful when a deck has something unusual, and optional otherwise.
 
 ## Options
 
@@ -112,6 +158,10 @@ The output sits next to `deck.d2p/`, which holds:
 
 **Animations are not carried over.** Each slide shows its finished state.
 
+**Edits in PowerPoint stay in PowerPoint.** They do not flow back to the HTML, so converting the whole deck again loses them. To add slides to a file people have edited, use the update path above.
+
+**Fonts on a PC that has them installed.** When a file is saved on a PC with one of its fonts installed, PowerPoint replaces the embedded copy with its own. From a variable font that makes the file much larger, and every weight gets the same data: 3.7 MB became 14 MB with Noto Sans KR. How that file looks on a machine without the font has not been tested. The update path puts the original fonts back, so give people the updated file.
+
 **Typography PowerPoint cannot do:** it applies no ligatures or contextual alternates, and ignores OpenType features such as `tnum`. Script fonts with contextual letterforms look slightly different.
 
 **Optical-size fonts** get one font per text size to match Chrome's cuts, so a deck using Bodoni Moda or DM Sans this way shows entries like "DM Sans 20pt" and "DM Sans 32pt" in PowerPoint's font menu.
@@ -124,7 +174,7 @@ The output sits next to `deck.d2p/`, which holds:
 
 **Clipped text:** PowerPoint cannot clip text, so characters hidden by `overflow: hidden` are left out, with a warning.
 
-**Page numbers** stay plain text and will not follow if slides are reordered.
+**Page numbers** stay plain text and will not follow if slides are reordered or added.
 
 **Right-to-left text** has not been tested.
 
@@ -140,7 +190,9 @@ The output sits next to `deck.d2p/`, which holds:
 4. **Place text.** PowerPoint's line layout was measured from the glyph positions in PDFs it wrote, across 29 fonts. It reduces to one small formula, so each baseline can be predicted from the font file alone, with no PowerPoint at conversion time.
 5. **Verify.** The result is rendered in real PowerPoint and compared with Chrome, by pixels and by glyph position.
 
-[docs/calibration.md](docs/calibration.md) has the measurements, including several that contradict what you would assume: `Slide.Export` silently ignores embedded fonts, `kern="0"` turns kerning off, and a `noSelect` lock does not let clicks through.
+To update a file, the marked slides go through the same steps, and the results are moved into the file part by part instead of through a library that would rewrite it.
+
+[docs/calibration.md](docs/calibration.md) has the measurements, including several that contradict what you would assume: `Slide.Export` silently ignores embedded fonts, `kern="0"` turns kerning off, a `noSelect` lock does not let clicks through, and a font named only for Korean text is dropped the first time anyone saves the file.
 
 ## Examples
 
@@ -162,4 +214,4 @@ dotnet run --project tests/validate -- x.pptx # schema check with Microsoft's va
 
 ## License
 
-MIT. Generated files contain your fonts, which keep their own licences.
+MIT. Generated files contain your fonts, which keep their own licences. frontend-slides is a separate project that this one calls but does not include. The example decks were generated with it and contain its code, under its own MIT licence: see [examples/NOTICE.md](examples/NOTICE.md).
