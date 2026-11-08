@@ -59,7 +59,6 @@ class Deck:
     css_faces: list[CssFace] = field(default_factory=list)
     stylesheet_urls: list[str] = field(default_factory=list)
     css_vars: dict = field(default_factory=dict)
-    marks: list[str] = field(default_factory=list)     # data-d2p-slide of each slide, "" where absent
 
 
 class DeckBrowser:
@@ -126,7 +125,7 @@ class DeckBrowser:
         inline = self.page.evaluate("() => [...document.querySelectorAll('style')].map(s => s.textContent).join('\\n')")
         faces += parse_font_faces(inline, self.page.url)
         return Deck(info["count"], info["title"], info["lang"], size[0], size[1], faces, urls,
-                    self.page.evaluate("() => __d2p.cssVars()"), info["marks"])
+                    self.page.evaluate("() => __d2p.cssVars()"))
 
     def fetch_local(self, url: str) -> bytes | None:
         """Bytes the browser already downloaded, so nothing is fetched twice."""

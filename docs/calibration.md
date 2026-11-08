@@ -59,13 +59,7 @@ A Korean font usually sits behind a Latin one, as in `'Space Grotesk', 'Noto San
 | Font after the saves | Gone | Bytes unchanged |
 | Fonts in PowerPoint's PDF | Malgun Gothic, Calibri | The embedded fonts only |
 
-**Fonts the machine has.** A used font that is not installed goes through any number of saves unchanged. If it is installed, PowerPoint replaces the embedded copy with one made from the installed file: EOT v2.2, compressed. From a variable font, every weight gets the same data, declared as weight 100. On a PC with Noto Sans KR installed, three faces went from 570 KB to 2.85 MB each and the file from 3.7 MB to 14 MB. What such a file looks like on a machine without the font has not been measured, since that takes uninstalling it. Renaming the font to hide the installed copy stops it loading, which proves nothing. `update` puts the original fonts back.
-
-**Slide identity.** `<p14:creationId>` in `<p:cSld>` is kept by a save and a move. A duplicate gets a new one and a new `sldId`, and so does a new slide. That makes it a better mark than a tag on the slide, which a duplicate would inherit.
-
-**Custom properties** survive, including a value of 2,400 characters, as do `customXml` parts. Document Inspector can remove them, so a file without a manifest has to keep working.
-
-**New slides** have no `<p:bg>`. A slide this program writes always has one, and a duplicate keeps it, which is one reason a background is the first thing `designed_reason` looks at.
+**Fonts the machine has.** A used font that is not installed goes through any number of saves unchanged. If it is installed, PowerPoint replaces the embedded copy with one made from the installed file: EOT v2.2, compressed. From a variable font, every weight gets the same data, declared as weight 100. On a PC with Noto Sans KR installed, three faces went from 570 KB to 2.85 MB each and the file from 3.7 MB to 14 MB. What such a file looks like on a machine without the font has not been measured, since that takes uninstalling it. Renaming the font to hide the installed copy stops it loading, which proves nothing.
 
 ## Line height
 
@@ -179,8 +173,6 @@ Locking is therefore no solution. Overlays go into the slide background, and lar
 
 ## Other small facts
 
-- `Presentation.Export` writes a picture for hidden slides, but a PDF has no page for them, so the two number slides differently.
-- PowerPoint opens a package holding parts nothing refers to, with no complaint, and removes them on its next save. Replacing a slide leaves its old pictures and charts behind in that state.
 - `<a:effectLst>` requires `innerShdw` before `outerShdw`. PowerPoint tolerates the wrong order, the schema does not. `tests/validate` runs Microsoft's Open XML SDK validator.
 - In text tagged as Korean, Japanese or Chinese, PowerPoint sends East Asian ambiguous punctuation (quotes, middle dots, arrows) to the CJK font, where it is wider than in Chrome. Those characters get their own Latin-tagged run.
 - `cap="all"` is the exact equivalent of `text-transform: uppercase` and keeps the original case in the file.

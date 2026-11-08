@@ -27,9 +27,8 @@ from lxml import etree
 from deck2pptx import ooxml as X
 from deck2pptx.fonts import UA_STATIC, EmbeddedFace, _ascent_ratio, _download, _flatten_kerning, _save, _set_kern_table
 from deck2pptx.textmodel import NATURAL_LINE, first_baseline, first_baseline_exact
-from deck2pptx.update import Package
 from deck2pptx.verify import render_powerpoint
-from deck2pptx.writer import CUSTOM_PART, add_blank_slide, finalize, new_presentation, read_manifest, stamp_slide
+from deck2pptx.writer import add_blank_slide, finalize, new_presentation
 
 FONTS = [("Space Grotesk", 400), ("Bebas Neue", 400), ("Shrikhand", 400), ("Playfair Display", 700), ("Press Start 2P", 400), ("Black Han Sans", 400),
          ("Noto Sans KR", 700)]
@@ -40,6 +39,8 @@ EM_TOLERANCE = 0.03      # a little over 1 px at 40 px; PowerPoint lays text out
 KERN_TEXT = "AVATAR To We Yo"
 KERN_SIZE = 80
 KERN_TOLERANCE = 1.5     # px at 80 px
+P = "http://schemas.openxmlformats.org/presentationml/2006/main"
+R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 
 def google_ttf(family: str, weight: int) -> bytes:
@@ -85,6 +86,19 @@ def origins(pdf: Path) -> list[list[tuple[float, float]]]:
     return out
 
 
+def embedded_fonts(path: Path) -> dict[str, bytes]:
+    """typeface → bytes of its regular face, as the file embeds it."""
+    with zipfile.ZipFile(path) as z:
+        pres = etree.fromstring(z.read("ppt/presentation.xml"))
+        rels = {r.get("Id"): r.get("Target") for r in etree.fromstring(z.read("ppt/_rels/presentation.xml.rels"))}
+        out = {}
+        for entry in pres.iter(f"{{{P}}}embeddedFont"):
+            regular = entry.find(f"{{{P}}}regular")
+            target = rels.get(regular.get(f"{{{R}}}id")) if regular is not None else None
+            out[entry.find(f"{{{P}}}font").get("typeface")] = z.read(f"ppt/{target}") if target else b""
+        return out
+
+
 def save_in_powerpoint(src: str, dst: str) -> None:
     """One save with a duplicate and a new slide, as someone editing the file would make."""
     import pythoncom
@@ -113,10 +127,9 @@ def check_save(work: Path, faces: list[EmbeddedFace]) -> bool:
     xml = box(10, 40, 40, latin.typeface, SIZE, ["AB"], "").replace(f'<a:ea typeface="{latin.typeface}"/>', f'<a:ea typeface="{cjk.typeface}"/>')
     for child in etree.fromstring(f"<root {X.NSDECL}>{xml}</root>"):
         slide.shapes._spTree.append(child)
-    stamp = stamp_slide(slide)
     raw_path, kept = work / "save-raw.pptx", work / "save-anchored.pptx"
     prs.save(raw_path)
-    finalize(raw_path, kept, [latin, cjk], manifest={"v": 1, "html": "x.html", "fonts": [cjk.typeface], "slides": [stamp]})
+    finalize(raw_path, kept, [latin, cjk])
     bare = work / "save-bare.pptx"
     master = "ppt/slideMasters/slideMaster1.xml"
     with zipfile.ZipFile(kept) as zin, zipfile.ZipFile(bare, "w", zipfile.ZIP_DEFLATED) as zout:
@@ -127,20 +140,12 @@ def check_save(work: Path, faces: list[EmbeddedFace]) -> bool:
     for name, path in (("anchored", kept), ("bare", bare)):
         saved = work / f"save-{name}.saved.pptx"
         subprocess.run([sys.executable, __file__, "--save", str(path), str(saved)], check=True, timeout=180)
-        results[name] = Package(saved)
-    slides = results["anchored"].slides()
-    source, after = Package(kept), results["anchored"]
-
-    def font_bytes(pkg: Package) -> bytes:
-        return pkg.parts[pkg.fonts()[cjk.typeface][cjk.slot]]
+        results[name] = embedded_fonts(saved)
+    before, after = embedded_fonts(kept), results["anchored"]
     checks = {
-        "a font reached only through <a:ea> is dropped on save": cjk.typeface not in results["bare"].fonts(),
-        "naming it on an unused master level keeps it": cjk.typeface in after.fonts(),
-        "a kept font keeps its bytes": cjk.typeface in after.fonts() and font_bytes(after) == font_bytes(source),
-        "the slide keeps its creationId": slides[0].creation == stamp,
-        "a duplicate gets a new creationId and sldId": slides[1].creation not in (None, stamp) and slides[1].id != slides[0].id,
-        "a new slide gets its own": slides[2].creation not in (None, stamp),
-        "the manifest survives": (read_manifest(results["anchored"].parts.get(CUSTOM_PART)) or {}).get("slides") == [stamp],
+        "a font reached only through <a:ea> is dropped on save": cjk.typeface not in results["bare"],
+        "naming it on an unused master level keeps it": cjk.typeface in after,
+        "a kept font keeps its bytes": after.get(cjk.typeface) == before[cjk.typeface],
     }
     for label, ok in checks.items():
         print(f"  {'ok   ' if ok else 'DRIFT'} {label}")

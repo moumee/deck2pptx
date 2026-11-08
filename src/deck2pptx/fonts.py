@@ -201,7 +201,6 @@ class FontBook:
         self.log = log
         self.warnings: list[str] = []
         self.usage: dict[tuple, set[str]] = {}
-        self.keep_text = ""     # text outside this conversion that a subset still has to cover
         self._loaded: dict[tuple, tuple[TTFont, bytes, str] | None] = {}
         self._cmaps: dict[tuple, set[int]] = {}
         self._pairs: set[str] = set()
@@ -534,9 +533,9 @@ class FontBook:
         return out
 
     def _subset(self, font: TTFont, used: set[str]) -> TTFont:
-        keep = {ord(c) for c in used} | {ord(c) for c in self.keep_text}
+        keep = {ord(c) for c in used}
         if self.subset_mode == "common":
-            keep |= common_cjk("".join(self._pairs) + self.keep_text)
+            keep |= common_cjk("".join(self._pairs))
         opts = ft_subset.Options()
         opts.layout_features = []
         opts.hinting = False

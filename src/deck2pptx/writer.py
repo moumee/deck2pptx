@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import collections
-import json
-import random
 import re
 import shutil
 import zipfile
@@ -16,7 +14,6 @@ from pptx.util import Emu
 from xml.sax.saxutils import escape, quoteattr
 
 from .fonts import EmbeddedFace, to_eot
-from .ooxml import NSDECL
 
 SLIDE_W = 12192000
 SOURCE_W = 9144000
@@ -24,18 +21,9 @@ SOURCE_W = 9144000
 KEEP_LAYOUTS = ("Title and Content", "Title Only", "Blank")
 A_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 P_NS = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
-P14_NS = "http://schemas.microsoft.com/office/powerpoint/2010/main"
-CREATION_ID_EXT = "{BB962C8B-B14F-4D97-AF65-F5344CB8AC3E}"
 APP_PROPERTIES = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
                   '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">'
                   '<Application>deck2pptx</Application><Slides>{}</Slides></Properties>')
-CUSTOM_PART = "docProps/custom.xml"
-CUSTOM_TYPE = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
-CUSTOM_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties"
-CUSTOM_NS = "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
-VT_NS = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
-CUSTOM_FMTID = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}"
-MANIFEST_NAME = "deck2pptx"
 # Outline levels no slide reaches, in the only two list styles PowerPoint counts when it decides which fonts are in use.
 ANCHOR_LEVELS = (6, 7, 8, 9)
 RUN_FONTS = re.compile(r'<a:latin typeface="([^"]*)"[^>]*/>\s*<a:ea typeface="([^"]*)"')
@@ -84,15 +72,6 @@ def add_blank_slide(prs, with_title: bool):
     return slide
 
 
-def stamp_slide(slide) -> int:
-    """Gives a finished slide the identity PowerPoint keeps on every save and never copies: a duplicate of the
-    slide gets a new creationId, which is what tells a slide this program made from one someone added."""
-    value = random.randrange(1, 2 ** 32)
-    slide.element.find(qn("p:cSld")).append(etree.fromstring(
-        f'<p:extLst {NSDECL}><p:ext uri="{CREATION_ID_EXT}"><p14:creationId xmlns:p14="{P14_NS}" val="{value}"/></p:ext></p:extLst>'))
-    return value
-
-
 def ea_only_fonts(slides: list[str]) -> list[str]:
     """Typefaces some run reaches through <a:ea> alone, most used first."""
     counts: collections.Counter = collections.Counter()
@@ -130,32 +109,6 @@ def anchor_fonts(master: bytes, presentation: bytes, names: list[str]) -> tuple[
     return parts[0], parts[1], left
 
 
-def custom_properties(existing: bytes | None, manifest: dict) -> bytes:
-    """docProps/custom.xml with the manifest set, keeping whatever other properties the file already has."""
-    root = etree.fromstring(existing) if existing else etree.Element(f"{{{CUSTOM_NS}}}Properties", nsmap={None: CUSTOM_NS, "vt": VT_NS})
-    prop = next((p for p in root if p.get("name") == MANIFEST_NAME), None)
-    if prop is None:
-        pid = max((int(p.get("pid", 1)) for p in root), default=1) + 1
-        prop = etree.SubElement(root, f"{{{CUSTOM_NS}}}property", fmtid=CUSTOM_FMTID, pid=str(pid), name=MANIFEST_NAME)
-    for child in list(prop):
-        prop.remove(child)
-    etree.SubElement(prop, f"{{{VT_NS}}}lpwstr").text = json.dumps(manifest, ensure_ascii=False, separators=(",", ":"))
-    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
-
-
-def read_manifest(custom: bytes | None) -> dict | None:
-    if not custom:
-        return None
-    for prop in etree.fromstring(custom):
-        if prop.get("name") == MANIFEST_NAME and len(prop):
-            try:
-                value = json.loads(prop[0].text or "")
-            except ValueError:
-                return None
-            return value if isinstance(value, dict) and "slides" in value else None
-    return None
-
-
 def _theme_xml(xml: str, theme: dict) -> str:
     def font(section: str, face: str | None, s: str) -> str:
         if not face:
@@ -169,9 +122,8 @@ def _theme_xml(xml: str, theme: dict) -> str:
     return xml
 
 
-def finalize(source: str | Path, target: str | Path, faces: list[EmbeddedFace], theme: dict | None = None,
-             manifest: dict | None = None) -> list[str]:
-    """Rewrite the package: embed fonts, set the theme, record the manifest.
+def finalize(source: str | Path, target: str | Path, faces: list[EmbeddedFace], theme: dict | None = None) -> list[str]:
+    """Rewrite the package: embed fonts, set the theme.
     Returns any typeface that could not be protected against PowerPoint dropping it."""
     src, dst = Path(source), Path(target)
     temp = dst.with_name(dst.name + ".partial")
@@ -186,7 +138,6 @@ def finalize(source: str | Path, target: str | Path, faces: list[EmbeddedFace], 
                                                       [n for n in ea_only_fonts(slides) if n in by_type])
         pres = pres_bytes.decode("utf8")
         types = zin.read("[Content_Types].xml").decode("utf8")
-        package_rels = zin.read("_rels/.rels").decode("utf8")
         entries, rel_xml, parts = "", "", {}
         n = 0
         for typeface, slots in by_type.items():
@@ -206,13 +157,9 @@ def finalize(source: str | Path, target: str | Path, faces: list[EmbeddedFace], 
             pres = re.sub(r"(<p:notesSz[^>]*/>)", lambda m: m[1] + f"<p:embeddedFontLst>{entries}</p:embeddedFontLst>", pres, count=1)
             pres = re.sub(r"<p:presentation ", '<p:presentation embedTrueTypeFonts="1" ', pres, count=1)
             types = types.replace("<Default ", '<Default Extension="fntdata" ContentType="application/x-fontdata"/><Default ', 1)
-        if manifest is not None:
-            parts[CUSTOM_PART] = custom_properties(None, manifest)
-            types = types.replace("</Types>", f'<Override PartName="/{CUSTOM_PART}" ContentType="{CUSTOM_TYPE}"/></Types>')
-            package_rels = package_rels.replace("</Relationships>", f'<Relationship Id="rId9000" Type="{CUSTOM_REL}" Target="{CUSTOM_PART}"/></Relationships>')
         for info in zin.infolist():
             name = info.filename
-            if name in ("ppt/_rels/presentation.xml.rels", "ppt/presentation.xml", "[Content_Types].xml", "_rels/.rels"):
+            if name in ("ppt/_rels/presentation.xml.rels", "ppt/presentation.xml", "[Content_Types].xml"):
                 continue
             data = master if name == master_name else zin.read(name)
             if theme and re.fullmatch(r"ppt/theme/theme1\.xml", name):
@@ -220,7 +167,6 @@ def finalize(source: str | Path, target: str | Path, faces: list[EmbeddedFace], 
             elif name == "docProps/app.xml":
                 data = APP_PROPERTIES.format(sum(bool(re.fullmatch(r"ppt/slides/slide\d+\.xml", n)) for n in zin.namelist())).encode("utf8")
             zout.writestr(info, data)
-        zout.writestr("_rels/.rels", package_rels)
         zout.writestr("ppt/_rels/presentation.xml.rels", rels)
         zout.writestr("ppt/presentation.xml", pres)
         zout.writestr("[Content_Types].xml", types)

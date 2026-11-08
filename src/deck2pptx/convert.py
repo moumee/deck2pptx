@@ -6,15 +6,14 @@ import datetime
 import json
 import tempfile
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
 
-from .browser import Deck, DeckBrowser
+from .browser import DeckBrowser
 from .css import parse_color
 from .fonts import FontBook, parse_font_stack
 from .slides import Options, SlideBuilder, pick_title
-from .writer import add_blank_slide, finalize, new_presentation, stamp_slide
+from .writer import add_blank_slide, finalize, new_presentation
 
 
 @dataclass
@@ -26,8 +25,6 @@ class Result:
     warnings: list[str]
     fonts: list[dict]
     seconds: float
-    sources: list[int] = field(default_factory=list)   # index in the HTML of each slide in the output
-    marks: list[str] = field(default_factory=list)     # data-d2p-slide of every slide in the HTML
 
     def totals(self) -> dict:
         keys = ("text", "shapes", "pictures", "tables", "rasters")
@@ -77,10 +74,7 @@ def _theme_from(irs: list[dict], faces, css_vars: dict) -> dict:
 
 
 def convert(html: str | Path, output: str | Path | None = None, *, options: Options | None = None, fonts: str = "common",
-            work_dir: str | Path | None = None, dpr: int = 2, hints: dict | None = None, log=print,
-            select: Callable[[Deck], set[int] | None] | None = None, keep_text: str = "") -> Result:
-    """`select` picks the slides to build once the deck is open; every slide is built without it, or if it returns None.
-    `keep_text` is text the fonts must cover although these slides do not draw it."""
+            work_dir: str | Path | None = None, dpr: int = 2, hints: dict | None = None, log=print) -> Result:
     started = time.time()
     html = Path(html).resolve()
     if not html.is_file():
@@ -91,29 +85,23 @@ def convert(html: str | Path, output: str | Path | None = None, *, options: Opti
     for stale in (work / "reference").glob("slide-*.png"):
         stale.unlink()
     opts = options or Options()
-    irs, stats, warnings, stamps, sources = [], [], [], [], []
+    irs, stats, warnings = [], [], []
 
     with DeckBrowser(html, dpr=dpr, log=log) as br:
         deck = br.open(hints)
         log(f"{html.name}: {deck.count} slides, {deck.width:g}×{deck.height:g}, {len(deck.css_faces)} @font-face rules")
-        chosen = select(deck) if select else None
         book = FontBook(deck.css_faces, deck.stylesheet_urls, fetch_local=br.fetch_local, used_fonts=br.used_fonts, subset_mode=fonts, log=log)
-        book.keep_text = keep_text
         prs = new_presentation(deck.width, deck.height)
         keyboard = not br.page.evaluate("() => !!document.querySelector('deck-stage')")
         for i in range(deck.count):
-            br.show(i, keyboard)        # always in order: the deck's controller has to see every step
-            if chosen is not None and i not in chosen:
-                continue
+            br.show(i, keyboard)
             ref = br.screenshot()
             ref.save(work / "reference" / f"slide-{i + 1:03d}.png", optimize=False, compress_level=1)
             ir = br.extract(i)
             irs.append(ir)
-            sources.append(i)
             slide = add_blank_slide(prs, pick_title(ir) is not None)
             builder = SlideBuilder(slide, ir, book, br, opts, deck.lang, deck.width)
             builder.build()
-            stamps.append(stamp_slide(slide))
             if ir.get("notes"):
                 slide.notes_slide.notes_text_frame.text = ir["notes"]
             row = asdict(builder.stats)
@@ -136,8 +124,7 @@ def convert(html: str | Path, output: str | Path | None = None, *, options: Opti
         with tempfile.TemporaryDirectory() as tmp:
             raw = Path(tmp) / "raw.pptx"
             prs.save(raw)
-            manifest = {"v": 1, "html": html.name, "fonts": sorted({f.typeface for f in faces}), "slides": stamps}
-            unprotected = finalize(raw, output, faces, _theme_from(irs, faces, deck.css_vars), manifest)
+            unprotected = finalize(raw, output, faces, _theme_from(irs, faces, deck.css_vars))
     warnings += book.warnings
     warnings += [f"'{name}' may disappear from the file when someone saves it in PowerPoint" for name in unprotected]
     # Apps that ignore embedded fonts (Google Slides, Keynote) need these installed instead.
@@ -147,8 +134,8 @@ def convert(html: str | Path, output: str | Path | None = None, *, options: Opti
         (font_dir / f"{f.typeface} {f.style_name}.ttf".replace(" Regular.ttf", ".ttf")).write_bytes(f.data)
     (work / "ir.json").write_text(json.dumps(irs, ensure_ascii=False), encoding="utf8")
     font_rows = [{"typeface": f.typeface, "slot": f.slot, "bytes": len(f.data), "fsType": f.fs_type} for f in faces]
-    result = Result(output, work, len(irs), stats, sorted(set(warnings)), font_rows, time.time() - started, sources, deck.marks)
+    result = Result(output, work, deck.count, stats, sorted(set(warnings)), font_rows, time.time() - started)
     (work / "convert.json").write_text(json.dumps({
-        "output": str(output), "slides": len(irs), "totals": result.totals(), "per_slide": stats,
+        "output": str(output), "slides": deck.count, "totals": result.totals(), "per_slide": stats,
         "warnings": result.warnings, "fonts": font_rows, "seconds": round(result.seconds, 1)}, ensure_ascii=False, indent=2), encoding="utf8")
     return result

@@ -25,7 +25,6 @@ HYPHENS = "-\u00AD\u2010\u2011\x02\uFFFE"
 class Rendered:
     pngs: list[Path]
     pdf: Path
-    hidden: list[bool]
 
 
 class VerifyUnavailable(RuntimeError):
@@ -49,7 +48,6 @@ def render_powerpoint(pptx: Path, out: Path) -> Rendered:
     pres = None
     try:
         pres = app.Presentations.Open(str(pptx), True, False, 0)   # read-only, no window
-        hidden = [bool(pres.Slides(i).SlideShowTransition.Hidden) for i in range(1, pres.Slides.Count + 1)]
         png_dir = out / "powerpoint"
         for stale in png_dir.glob("*.PNG"):
             stale.unlink()
@@ -62,7 +60,7 @@ def render_powerpoint(pptx: Path, out: Path) -> Rendered:
         if app.Presentations.Count == 0:
             app.Quit()
     pngs = sorted(png_dir.glob("*.PNG"), key=lambda p: int("".join(filter(str.isdigit, p.stem)) or 0))
-    return Rendered(pngs, pdf, hidden)
+    return Rendered(pngs, pdf)
 
 
 def _box(a: np.ndarray, r: int) -> np.ndarray:
@@ -95,9 +93,8 @@ def compare(ref: Image.Image, test: Image.Image) -> dict:
             "mean_error": round(float(arr.mean()), 2), "changed_pct": round(float((arr > 32).mean() * 100), 2)}, ref, test, diff
 
 
-def measure_lines(pdf: Path, irs: list[dict], pages: list[int | None] | None = None) -> list[dict]:
-    """Where PowerPoint put each line versus where Chrome did, slide by slide.
-    `pages` gives the PDF page of each slide when they are not simply in order, None for one that has no page."""
+def measure_lines(pdf: Path, irs: list[dict]) -> list[dict]:
+    """Where PowerPoint put each line versus where Chrome did, slide by slide."""
     try:
         import pypdfium2 as pdfium
         import pypdfium2.raw as raw
@@ -107,11 +104,9 @@ def measure_lines(pdf: Path, irs: list[dict], pages: list[int | None] | None = N
     doc = pdfium.PdfDocument(str(pdf))
     out = []
     for i, ir in enumerate(irs):
-        number = pages[i] if pages else i
-        if number is None or number >= len(doc):
-            out.append({"errors": [], "unmatched": [], "skipped": 0})
-            continue
-        page = doc[number]
+        if i >= len(doc):
+            break
+        page = doc[i]
         width, height = page.get_size()
         k = ir["width"] / width
         text = page.get_textpage()
@@ -156,9 +151,9 @@ def measure_lines(pdf: Path, irs: list[dict], pages: list[int | None] | None = N
     return out
 
 
-def glyph_report(pdf: Path, irs: list[dict], pages: list[int | None] | None = None) -> list[dict]:
+def glyph_report(pdf: Path, irs: list[dict]) -> list[dict]:
     out = []
-    for i, m in enumerate(measure_lines(pdf, irs, pages)):
+    for i, m in enumerate(measure_lines(pdf, irs)):
         errors = m["errors"]
         out.append({
             "slide": i + 1, "lines": len(errors) + len(m["unmatched"]), "matched": len(errors), "unmatched": m["unmatched"][:8], "skipped": m["skipped"],
@@ -209,28 +204,24 @@ def _norm(s: str) -> str:
     return "".join(c for c in s if not c.isspace() and c not in HYPHENS)
 
 
-def verify(pptx: Path, work: Path, log=print, pairs: list[tuple[int, int]] | None = None) -> dict:
-    """Compares each measured slide with PowerPoint's rendering. `pairs` is for a file where only some slides came from
-    this conversion: (index in ir.json, position in the file). Reports number slides as they are numbered in the file."""
+def verify(pptx: Path, work: Path, log=print) -> dict:
     rendered = render_powerpoint(pptx, work)
     irs = json.loads((work / "ir.json").read_text(encoding="utf8"))
+    glyphs = glyph_report(rendered.pdf, irs)
     refs = sorted((work / "reference").glob("slide-*.png"))
-    if pairs is None:
-        pairs = [(i, i) for i in range(min(len(refs), len(rendered.pngs)))]
-    # A hidden slide has a picture but no page in the PDF.
-    pages = [None if rendered.hidden[p] else sum(not h for h in rendered.hidden[:p]) for _, p in pairs]
-    glyphs = glyph_report(rendered.pdf, [irs[i] for i, _ in pairs], pages)
     rows = []
     (work / "compare").mkdir(exist_ok=True)
-    for (index, position), glyph in zip(pairs, glyphs):
-        n = position + 1
-        metrics, a, b, diff = compare(Image.open(refs[index]), Image.open(rendered.pngs[position]))
-        a.save(work / "compare" / f"{n:03d}-chrome.png", compress_level=1)
-        b.save(work / "compare" / f"{n:03d}-powerpoint.png", compress_level=1)
-        Image.eval(diff, lambda v: min(255, v * 3)).save(work / "compare" / f"{n:03d}-diff.png", compress_level=1)
-        rows.append({"slide": n, **metrics, "text": {**glyph, "slide": n}})
-        log(f"  slide {n:>2}: SSIM {metrics['ssim']:.3f} (viewing scale {metrics['ssim_view']:.3f})  changed {metrics['changed_pct']:5.2f}%"
-            f"  text dy≤{glyph['max_dy']:.1f}px dx≤{glyph['max_dx']:.1f}px unmatched {len(glyph['unmatched'])}/{glyph['lines']}")
+    for i, (r, t) in enumerate(zip(refs, rendered.pngs)):
+        metrics, a, b, diff = compare(Image.open(r), Image.open(t))
+        a.save(work / "compare" / f"{i + 1:03d}-chrome.png", compress_level=1)
+        b.save(work / "compare" / f"{i + 1:03d}-powerpoint.png", compress_level=1)
+        Image.eval(diff, lambda v: min(255, v * 3)).save(work / "compare" / f"{i + 1:03d}-diff.png", compress_level=1)
+        row = {"slide": i + 1, **metrics}
+        if i < len(glyphs):
+            row["text"] = glyphs[i]
+        rows.append(row)
+        log(f"  slide {i + 1:>2}: SSIM {metrics['ssim']:.3f} (viewing scale {metrics['ssim_view']:.3f})  changed {metrics['changed_pct']:5.2f}%"
+            + (f"  text dy≤{glyphs[i]['max_dy']:.1f}px dx≤{glyphs[i]['max_dx']:.1f}px unmatched {len(glyphs[i]['unmatched'])}/{glyphs[i]['lines']}" if i < len(glyphs) else ""))
     report = {
         "pptx": str(pptx), "slides": rows,
         "ssim_mean": round(float(np.mean([r["ssim"] for r in rows])), 4) if rows else 0,
